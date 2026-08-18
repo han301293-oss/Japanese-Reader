@@ -76,20 +76,9 @@ if analyze_btn:
             try:
                 genai.configure(api_key=api_key)
 
-                # Tự động lấy danh sách model được hỗ trợ
-                available_models = [
-                    m.name for m in genai.list_models() 
-                    if "generateContent" in m.supported_generation_methods
-                ]
-                
-                # Lựa chọn model phù hợp nhất
-                selected_model = next(
-                    (m for m in available_models if "flash" in m), 
-                    available_models[0] if available_models else "models/gemini-1.5-flash"
-                )
-
+                # Sử dụng model gemini-3.6-flash
                 model = genai.GenerativeModel(
-                    model_name=selected_model,
+                    model_name="gemini-3.6-flash",
                     generation_config={"response_mime_type": "application/json"}
                 )
                 response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
