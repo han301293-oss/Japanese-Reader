@@ -76,7 +76,7 @@ if analyze_btn:
             try:
                 genai.configure(api_key=api_key)
                 model = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
+                    model_name="gemini-1.5-flash-latest",
                     generation_config={"response_mime_type": "application/json"}
                 )
                 response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
