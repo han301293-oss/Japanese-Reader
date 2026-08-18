@@ -74,12 +74,25 @@ if analyze_btn:
     else:
         with st.spinner("AI đang bóc tách ngữ pháp, từ vựng và tạo bài tập..."):
             try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(
-                    model_name="gemini-pro",
-                    generation_config={"response_mime_type": "application/json"}
-                )
-                response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
+               genai.configure(api_key=api_key)
+
+# Tự động tìm model phù hợp nhất đang hỗ trợ tạo nội dung trong tài khoản
+available_models = [
+    m.name for m in genai.list_models() 
+    if "generateContent" in m.supported_generation_methods
+]
+
+# Ưu tiên các model flash hoặc lấy ngay model đầu tiên khả dụng
+selected_model_name = next(
+    (m for m in available_models if "flash" in m), 
+    available_models[0] if available_models else "gemini-1.5-flash"
+)
+
+model = genai.GenerativeModel(
+    model_name=selected_model_name,
+    generation_config={"response_mime_type": "application/json"}
+)
+response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
                 data = json.loads(response.text)
 
                 st.success(" Đã phân tích thành công!")
