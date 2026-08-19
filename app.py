@@ -1,8 +1,14 @@
 import streamlit as st
 import google.generativeai as genai
 import json
-from gTTS import gTTS
 import io
+
+# Tải an toàn thư viện phát âm thanh (không sợ bị sập web)
+try:
+    from gtts import gTTS
+    TTS_AVAILABLE = True
+except ImportError:
+    TTS_AVAILABLE = False
 
 st.set_page_config(
     page_title="Luyện Đọc & Phân Tích Tiếng Nhật JLPT",
@@ -231,14 +237,17 @@ if analyze_btn:
                 st.session_state.analysis_data = json.loads(response.text)
                 st.session_state.current_user_text = user_text
 
-                # Tạo giọng đọc âm thanh tiếng Nhật (Text-to-Speech AI)
-                try:
-                    tts = gTTS(text=user_text, lang='ja')
-                    fp = io.BytesIO()
-                    tts.write_to_fp(fp)
-                    fp.seek(0)
-                    st.session_state.audio_bytes = fp.read()
-                except Exception as tts_err:
+                # Tạo giọng đọc âm thanh tiếng Nhật nếu thư viện khả dụng
+                if TTS_AVAILABLE:
+                    try:
+                        tts = gTTS(text=user_text, lang='ja')
+                        fp = io.BytesIO()
+                        tts.write_to_fp(fp)
+                        fp.seek(0)
+                        st.session_state.audio_bytes = fp.read()
+                    except Exception as tts_err:
+                        st.session_state.audio_bytes = None
+                else:
                     st.session_state.audio_bytes = None
 
             except Exception as e:
@@ -265,6 +274,8 @@ if st.session_state.analysis_data:
         st.markdown("#### 🎧 Luyện nghe bài đọc (Giọng AI chuẩn bản xứ):")
         if st.session_state.audio_bytes:
             st.audio(st.session_state.audio_bytes, format='audio/mp3')
+        elif not TTS_AVAILABLE:
+            st.info("💡 Trình phát âm thanh đang được máy chủ cập nhật trong giây lát.")
         else:
             st.info("💡 Bạn có thể bấm nghe lại khi phân tích bài đọc.")
 
