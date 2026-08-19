@@ -206,19 +206,10 @@ if analyze_btn:
         with st.spinner("🌸 AI đang bóc tách ngữ pháp, từ vựng và tạo bài tập JLPT..."):
             try:
                 genai.configure(api_key=api_key)
-                
-                # Tự động chọn model khả dụng
-                available_models = [
-                    m.name for m in genai.list_models() 
-                    if "generateContent" in m.supported_generation_methods
-                ]
-                selected_model = next(
-                    (m for m in available_models if "flash" in m), 
-                    available_models[0] if available_models else "gemini-1.5-flash"
-                )
 
+                # Sử dụng trực tiếp model chính thức mới nhất
                 model = genai.GenerativeModel(
-                    model_name=selected_model,
+                    model_name="gemini-3.6-flash",
                     generation_config={"response_mime_type": "application/json"}
                 )
                 response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
