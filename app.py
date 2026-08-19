@@ -3,6 +3,7 @@ import google.generativeai as genai
 import json
 import io
 import re
+import base64
 
 try:
     from gtts import gTTS
@@ -17,20 +18,57 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Cấu hình CSS
+# Cấu hình CSS: Hợp nhất nền tiêu đề và thanh công cụ Streamlit trên cùng thành 1 dải mượt mà
 st.markdown("""
 <style>
+    /* Thanh công cụ và Header của Streamlit cùng chung 1 dải nền */
     header[data-testid="stHeader"] {
-        background: transparent !important;
-        height: 0px !important;
-        z-index: 1 !important;
+        background: linear-gradient(135deg, rgba(255, 240, 245, 0.95), rgba(255, 228, 238, 0.95)) !important;
+        border-bottom: 1px solid #ffd1dc !important;
+        box-shadow: 0 2px 10px rgba(255, 182, 193, 0.25) !important;
+        backdrop-filter: blur(8px) !important;
+        z-index: 999990 !important;
     }
-    
+    @media (prefers-color-scheme: dark) {
+        header[data-testid="stHeader"] {
+            background: linear-gradient(135deg, rgba(40, 18, 28, 0.95), rgba(30, 12, 22, 0.95)) !important;
+            border-bottom: 1px solid #5a2a3a !important;
+            box-shadow: 0 2px 10px rgba(255, 117, 140, 0.2) !important;
+        }
+    }
+
+    /* Tiêu đề cố định trên cùng dải Header */
+    .app-title-fixed {
+        position: fixed;
+        top: 6px;
+        left: 20px;
+        z-index: 999999;
+        pointer-events: none;
+    }
+    .app-main-title {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #d81b60 !important;
+        margin: 0;
+        letter-spacing: -0.3px;
+    }
+    .app-sub-title {
+        font-size: 0.78rem;
+        color: #666 !important;
+        margin: 0;
+    }
+    @media (prefers-color-scheme: dark) {
+        .app-main-title { color: #ff80ab !important; }
+        .app-sub-title { color: #bbb !important; }
+    }
+
+    /* Đệm trang để không bị che bởi dải Header */
     .block-container {
-        padding-top: 2rem !important;
+        padding-top: 4.2rem !important;
         padding-bottom: 3rem !important;
     }
 
+    /* Hiệu ứng cánh hoa anh đào rơi */
     .sakura-container {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -63,51 +101,12 @@ st.markdown("""
         100% { transform: translateX(35px) rotate(45deg); }
     }
 
-    .sticky-header-box {
-        position: -webkit-sticky;
-        position: sticky;
-        top: 0.5rem;
-        z-index: 998;
-        background: linear-gradient(135deg, rgba(255, 240, 245, 0.98), rgba(255, 228, 238, 0.98));
-        border: 2px solid #ffccd5;
-        border-radius: 16px;
-        padding: 14px 24px;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 6px 20px rgba(255, 182, 193, 0.35);
-        backdrop-filter: blur(10px);
-    }
-    @media (prefers-color-scheme: dark) {
-        .sticky-header-box {
-            background: linear-gradient(135deg, rgba(45, 20, 30, 0.98), rgba(30, 15, 25, 0.98));
-            border: 2px solid #ff758c;
-            box-shadow: 0 6px 20px rgba(255, 117, 140, 0.3);
-        }
-    }
-
-    .sticky-title {
-        font-size: 1.6rem;
-        font-weight: 800;
-        margin: 0;
-        color: #d81b60 !important;
-        letter-spacing: -0.5px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .sticky-subtitle {
-        font-size: 0.9rem;
-        color: #555 !important;
-        margin: 4px 0 0 0;
-    }
-    @media (prefers-color-scheme: dark) {
-        .sticky-title { color: #ff80ab !important; }
-        .sticky-subtitle { color: #ddd !important; }
-    }
-
+    /* Hiển thị tiếng Nhật & Furigana */
     ruby { font-size: 1.35rem; line-height: 2.3rem; font-family: 'Hiragino Mincho Pro', 'Yu Mincho', serif; }
     rt { font-size: 0.78rem; color: #e91e63; font-weight: 600; }
     .plain-jp-text { font-size: 1.25rem; line-height: 2.1rem; font-family: 'Hiragino Mincho Pro', 'Yu Mincho', serif; }
 
+    /* Khối dịch tiếng Việt */
     .vi-translation-box {
         background: rgba(255, 243, 224, 0.75);
         border-left: 4px solid #ff9800;
@@ -127,6 +126,7 @@ st.markdown("""
     }
 </style>
 
+<!-- Hiệu ứng cánh hoa anh đào rơi -->
 <div class="sakura-container">
     <div class="petal"></div>
     <div class="petal"></div>
@@ -138,34 +138,34 @@ st.markdown("""
     <div class="petal"></div>
 </div>
 
-<div class="sticky-header-box">
-    <div class="sticky-title">🌸 Luyện Đọc & Phân Tích Tiếng Nhật JLPT</div>
-    <div class="sticky-subtitle">Tự động dịch khổ, tra cứu Furigana, phân loại Ngữ pháp/Từ vựng N5–N1 và tạo bài tập luyện thi</div>
+<!-- Tiêu đề chìm liền vào thanh Header -->
+<div class="app-title-fixed">
+    <div class="app-main-title">🌸 Luyện Đọc & Phân Tích Tiếng Nhật JLPT</div>
+    <div class="app-sub-title">Tự động dịch khổ, tra cứu Furigana, phân loại Ngữ pháp/Từ vựng N5–N1 và tạo bài tập luyện thi</div>
 </div>
 """, unsafe_allow_html=True)
 
+# Lấy API Key từ Secrets hoặc Sidebar
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 if not api_key:
     api_key = st.sidebar.text_input("🔑 Nhập Gemini API Key của bạn:", type="password")
 
+# Khởi tạo session_state
 if "analysis_data" not in st.session_state:
     st.session_state.analysis_data = None
 if "current_user_text" not in st.session_state:
     st.session_state.current_user_text = ""
+if "raw_audio_b64" not in st.session_state:
+    st.session_state.raw_audio_b64 = None
 
+# Khung nhập bài đọc
 user_text = st.text_area(
     "📋 Dán bài đọc tiếng Nhật vào đây:",
     height=160,
     placeholder="例：三日が過ぎたとき、おばあさんはおじいさんに言いました。「どうして、あんなに美しい布を織れるのだろう。ちょっとのぞいてみよう」..."
 )
 
-col_toggle, col_speed, col_btn = st.columns([1.2, 1.5, 2.5])
-with col_toggle:
-    show_furigana = st.toggle("🌸 Bật Furigana", value=True)
-with col_speed:
-    voice_speed = st.selectbox("⚡ Tốc độ đọc AI:", ["Bình thường (1.0x)", "Chậm (0.75x)"], index=0)
-with col_btn:
-    analyze_btn = st.button("🚀 Phân tích bài đọc", type="primary")
+analyze_btn = st.button("🚀 Phân tích bài đọc", type="primary", use_container_width=True)
 
 SYSTEM_PROMPT = """
 Bạn là một chuyên gia ngôn ngữ học và giáo viên luyện thi tiếng Nhật JLPT cao cấp.
@@ -222,7 +222,6 @@ def clean_and_parse_json(raw_text):
     if text.endswith("```"):
         text = text[:-3]
     text = text.strip()
-    
     try:
         return json.loads(text, strict=False)
     except Exception:
@@ -235,23 +234,32 @@ if analyze_btn:
     elif not user_text.strip():
         st.warning("⚠️ Vui lòng dán nội dung bài đọc trước khi bấm phân tích.")
     else:
-        with st.spinner("🌸 AI đang phân tích bài đọc, tạo 5 câu hỏi JLPT..."):
+        with st.spinner("🌸 AI đang phân tích bài đọc, tạo 5 câu hỏi JLPT và file âm thanh..."):
             try:
                 genai.configure(api_key=api_key)
-
                 model = genai.GenerativeModel(
                     model_name="gemini-3.6-flash",
                     generation_config={"response_mime_type": "application/json"}
                 )
                 response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
-                
                 st.session_state.analysis_data = clean_and_parse_json(response.text)
                 st.session_state.current_user_text = user_text
+
+                # Tạo âm thanh đọc AI và lưu dạng base64
+                if TTS_AVAILABLE:
+                    try:
+                        tts = gTTS(text=user_text, lang='ja', slow=False)
+                        fp = io.BytesIO()
+                        tts.write_to_fp(fp)
+                        fp.seek(0)
+                        st.session_state.raw_audio_b64 = base64.b64encode(fp.read()).decode()
+                    except Exception:
+                        st.session_state.raw_audio_b64 = None
 
             except Exception as e:
                 st.error(f"Đã xảy ra lỗi khi gọi AI: {str(e)}")
 
-# HIỂN THỊ KẾT QUẢ TỪ SESSION STATE
+# HIỂN THỊ KẾT QUẢ
 if st.session_state.analysis_data:
     data = st.session_state.analysis_data
     
@@ -267,33 +275,48 @@ if st.session_state.analysis_data:
         "📖 Bài đọc & Dịch", "📝 Ngữ pháp", "📚 Từ vựng", "🈲 Hán tự (Kanji)", "❓ Câu hỏi JLPT (5 câu)"
     ])
 
-    # Tab 1: Bài đọc & Dịch + Trình phát âm thanh có nút chỉnh tốc độ
+    # Tab 1: Bài đọc & Dịch
     with tab_read:
-        st.markdown("#### 🎧 Luyện nghe bài đọc (Giọng AI chuẩn bản xứ):")
+        st.markdown("#### 🎧 Luyện nghe bài đọc (Giọng AI):")
         
-        if TTS_AVAILABLE and st.session_state.current_user_text:
-            try:
-                is_slow = True if "Chậm" in voice_speed else False
-                tts = gTTS(text=st.session_state.current_user_text, lang='ja', slow=is_slow)
-                fp = io.BytesIO()
-                tts.write_to_fp(fp)
-                fp.seek(0)
-                st.audio(fp.read(), format='audio/mp3')
-            except Exception as e:
-                st.info("💡 Không thể tải file âm thanh cho bài đọc này.")
-        else:
-            st.info("💡 Trình phát âm thanh sẵn sàng khi phân tích bài đọc.")
+        # Hàng phát Audio + Chọn tốc độ (0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x)
+        aud_col, spd_col = st.columns([3.5, 1.5])
+        with spd_col:
+            speed_val = st.selectbox(
+                "⚡ Tốc độ phát:",
+                [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+                index=2,
+                format_func=lambda x: f"x{x}"
+            )
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        with aud_col:
+            if st.session_state.raw_audio_b64:
+                audio_html = f"""
+                <audio id="custom_audio" controls style="width: 100%; height: 45px;">
+                    <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
+                </audio>
+                <script>
+                    var audio = document.getElementById('custom_audio');
+                    if (audio) {{ audio.playbackRate = {speed_val}; }}
+                </script>
+                """
+                st.components.v1.html(audio_html, height=55)
+            else:
+                st.info("💡 Không thể tải file âm thanh cho bài đọc này.")
+
+        st.markdown("---")
+        
+        # Công tắc bật tắt Furigana ngay bên trên phần đọc dịch (mặc định tắt)
+        show_furigana = st.toggle("🌸 Bật Furigana", value=False)
 
         for p in data.get("paragraphs", []):
-            st.markdown("---")
             if show_furigana:
                 st.markdown(f"<div>{p.get('furigana_html')}</div>", unsafe_allow_html=True)
             else:
                 st.markdown(f"<div class='plain-jp-text'>{p.get('original_text')}</div>", unsafe_allow_html=True)
             
             st.markdown(f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch:</strong> {p.get('vietnamese_translation')}</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
     # Tab 2: Ngữ pháp
     with tab_grammar:
