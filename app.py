@@ -3,7 +3,6 @@ import google.generativeai as genai
 import json
 import io
 
-# Tải an toàn thư viện phát âm thanh (không sợ bị sập web)
 try:
     from gtts import gTTS
     TTS_AVAILABLE = True
@@ -18,14 +17,22 @@ st.set_page_config(
 )
 
 # Cấu hình CSS:
-# 1. Khóa cố định tiêu đề bằng position: fixed (bắt buộc hoạt động 100% trên Streamlit)
-# 2. Hiệu ứng cánh hoa anh đào rơi
-# 3. Chỉnh màu sắc, cỡ chữ bản dịch
+# 1. Ẩn thanh top bar mặc định của Streamlit để tiêu đề nổi bật rõ ràng, không bị đè.
+# 2. Cố định Sticky Header trực quan, luôn nhìn thấy 100% khi cuộn chuột.
+# 3. Hiệu ứng cánh hoa anh đào rơi.
 st.markdown("""
 <style>
-    /* Khoảng trống trên cùng để bù lại thanh Header bị fixed */
+    /* Ẩn header mặc định màu trắng của Streamlit để không che mất tiêu đề */
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+        height: 0px !important;
+        z-index: 1 !important;
+    }
+    
+    /* Canh lề trên vừa vặn */
     .block-container {
-        padding-top: 5.5rem !important;
+        padding-top: 2rem !important;
+        padding-bottom: 3rem !important;
     }
 
     /* Hiệu ứng cánh hoa anh đào rơi */
@@ -61,46 +68,46 @@ st.markdown("""
         100% { transform: translateX(35px) rotate(45deg); }
     }
 
-    /* Khóa cố định 1 ô Header trên cùng (Fixed Header) */
-    .fixed-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 72px;
-        z-index: 9999;
-        background: linear-gradient(135deg, rgba(255, 240, 245, 0.96), rgba(255, 228, 238, 0.96));
-        border-bottom: 2px solid #ffccd5;
-        padding: 10px 2rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        box-shadow: 0 4px 15px rgba(255, 182, 193, 0.3);
+    /* Thanh Sticky Header cố định đẹp mắt, rõ chữ */
+    .sticky-header-box {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 0.5rem;
+        z-index: 998;
+        background: linear-gradient(135deg, rgba(255, 240, 245, 0.98), rgba(255, 228, 238, 0.98));
+        border: 2px solid #ffccd5;
+        border-radius: 16px;
+        padding: 14px 24px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 6px 20px rgba(255, 182, 193, 0.35);
         backdrop-filter: blur(10px);
     }
     @media (prefers-color-scheme: dark) {
-        .fixed-header {
-            background: linear-gradient(135deg, rgba(45, 20, 30, 0.96), rgba(30, 15, 25, 0.96));
-            border-bottom: 2px solid #ff758c;
-            box-shadow: 0 4px 15px rgba(255, 117, 140, 0.25);
+        .sticky-header-box {
+            background: linear-gradient(135deg, rgba(45, 20, 30, 0.98), rgba(30, 15, 25, 0.98));
+            border: 2px solid #ff758c;
+            box-shadow: 0 6px 20px rgba(255, 117, 140, 0.3);
         }
     }
 
-    .fixed-title {
-        font-size: 1.45rem;
+    .sticky-title {
+        font-size: 1.6rem;
         font-weight: 800;
         margin: 0;
-        color: #d81b60;
+        color: #d81b60 !important;
         letter-spacing: -0.5px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
-    .fixed-subtitle {
-        font-size: 0.85rem;
-        color: #555;
-        margin: 2px 0 0 0;
+    .sticky-subtitle {
+        font-size: 0.9rem;
+        color: #555 !important;
+        margin: 4px 0 0 0;
     }
     @media (prefers-color-scheme: dark) {
-        .fixed-title { color: #ff80ab; }
-        .fixed-subtitle { color: #ccc; }
+        .sticky-title { color: #ff80ab !important; }
+        .sticky-subtitle { color: #ddd !important; }
     }
 
     /* Furigana & Văn bản tiếng Nhật */
@@ -108,7 +115,7 @@ st.markdown("""
     rt { font-size: 0.78rem; color: #e91e63; font-weight: 600; }
     .plain-jp-text { font-size: 1.25rem; line-height: 2.1rem; font-family: 'Hiragino Mincho Pro', 'Yu Mincho', serif; }
 
-    /* Dòng dịch tiếng Việt */
+    /* Dòng dịch tiếng Việt nổi bật */
     .vi-translation-box {
         background: rgba(255, 243, 224, 0.75);
         border-left: 4px solid #ff9800;
@@ -141,9 +148,9 @@ st.markdown("""
 </div>
 
 <!-- Header cố định vĩnh viễn ở trên cùng -->
-<div class="fixed-header">
-    <div class="fixed-title">🌸 Luyện Đọc & Phân Tích Tiếng Nhật JLPT</div>
-    <div class="fixed-subtitle">Tự động dịch khổ, tra cứu Furigana, phân loại Ngữ pháp/Từ vựng N5–N1 và tạo bài tập luyện thi</div>
+<div class="sticky-header-box">
+    <div class="sticky-title">🌸 Luyện Đọc & Phân Tích Tiếng Nhật JLPT</div>
+    <div class="sticky-subtitle">Tự động dịch khổ, tra cứu Furigana, phân loại Ngữ pháp/Từ vựng N5–N1 và tạo bài tập luyện thi</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -152,11 +159,9 @@ api_key = st.secrets.get("GEMINI_API_KEY", None)
 if not api_key:
     api_key = st.sidebar.text_input("🔑 Nhập Gemini API Key của bạn:", type="password")
 
-# Khởi tạo session_state để lưu kết quả và file âm thanh đọc AI
+# Khởi tạo session_state để lưu kết quả và các trạng thái
 if "analysis_data" not in st.session_state:
     st.session_state.analysis_data = None
-if "audio_bytes" not in st.session_state:
-    st.session_state.audio_bytes = None
 if "current_user_text" not in st.session_state:
     st.session_state.current_user_text = ""
 
@@ -167,9 +172,11 @@ user_text = st.text_area(
     placeholder="例：三日が過ぎたとき、おばあさんはおじいさんに言いました。「どうして、あんなに美しい布を織れるのだろう。ちょっとのぞいてみよう」..."
 )
 
-col_toggle, col_btn = st.columns([1.2, 4])
+col_toggle, col_speed, col_btn = st.columns([1.2, 1.5, 2.5])
 with col_toggle:
     show_furigana = st.toggle("🌸 Bật Furigana", value=True)
+with col_speed:
+    voice_speed = st.selectbox("⚡ Tốc độ đọc AI:", ["Bình thường (1.0x)", "Chậm (0.75x)"], index=0)
 with col_btn:
     analyze_btn = st.button("🚀 Phân tích bài đọc", type="primary")
 
@@ -225,7 +232,7 @@ if analyze_btn:
     elif not user_text.strip():
         st.warning("⚠️ Vui lòng dán nội dung bài đọc trước khi bấm phân tích.")
     else:
-        with st.spinner("🌸 AI đang phân tích bài đọc, tạo 5 câu hỏi JLPT và tạo giọng đọc âm thanh..."):
+        with st.spinner("🌸 AI đang phân tích bài đọc, tạo 5 câu hỏi JLPT..."):
             try:
                 genai.configure(api_key=api_key)
 
@@ -236,19 +243,6 @@ if analyze_btn:
                 response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
                 st.session_state.analysis_data = json.loads(response.text)
                 st.session_state.current_user_text = user_text
-
-                # Tạo giọng đọc âm thanh tiếng Nhật nếu thư viện khả dụng
-                if TTS_AVAILABLE:
-                    try:
-                        tts = gTTS(text=user_text, lang='ja')
-                        fp = io.BytesIO()
-                        tts.write_to_fp(fp)
-                        fp.seek(0)
-                        st.session_state.audio_bytes = fp.read()
-                    except Exception as tts_err:
-                        st.session_state.audio_bytes = None
-                else:
-                    st.session_state.audio_bytes = None
 
             except Exception as e:
                 st.error(f"Đã xảy ra lỗi khi gọi AI: {str(e)}")
@@ -269,15 +263,23 @@ if st.session_state.analysis_data:
         "📖 Bài đọc & Dịch", "📝 Ngữ pháp", "📚 Từ vựng", "🈲 Hán tự (Kanji)", "❓ Câu hỏi JLPT (5 câu)"
     ])
 
-    # Tab 1: Bài đọc & Dịch + Giọng đọc AI ở trên cùng
+    # Tab 1: Bài đọc & Dịch + Trình phát âm thanh có nút chỉnh tốc độ
     with tab_read:
         st.markdown("#### 🎧 Luyện nghe bài đọc (Giọng AI chuẩn bản xứ):")
-        if st.session_state.audio_bytes:
-            st.audio(st.session_state.audio_bytes, format='audio/mp3')
-        elif not TTS_AVAILABLE:
-            st.info("💡 Trình phát âm thanh đang được máy chủ cập nhật trong giây lát.")
+        
+        # Tạo giọng đọc âm thanh theo tốc độ đã chọn
+        if TTS_AVAILABLE and st.session_state.current_user_text:
+            try:
+                is_slow = True if "Chậm" in voice_speed else False
+                tts = gTTS(text=st.session_state.current_user_text, lang='ja', slow=is_slow)
+                fp = io.BytesIO()
+                tts.write_to_fp(fp)
+                fp.seek(0)
+                st.audio(fp.read(), format='audio/mp3')
+            except Exception as e:
+                st.info("💡 Không thể tải file âm thanh cho bài đọc này.")
         else:
-            st.info("💡 Bạn có thể bấm nghe lại khi phân tích bài đọc.")
+            st.info("💡 Trình phát âm thanh sẵn sàng khi phân tích bài đọc.")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
