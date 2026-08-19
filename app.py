@@ -1,6 +1,8 @@
 import streamlit as st
 import google.generativeai as genai
 import json
+from gTTS import gTTS
+import io
 
 st.set_page_config(
     page_title="Luyện Đọc & Phân Tích Tiếng Nhật JLPT",
@@ -9,10 +11,18 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Cấu hình CSS: Cố định Header (Sticky Header), Hiệu ứng cánh hoa anh đào rơi CSS, Tùy chỉnh màu sắc & chữ dịch
+# Cấu hình CSS:
+# 1. Khóa cố định tiêu đề bằng position: fixed (bắt buộc hoạt động 100% trên Streamlit)
+# 2. Hiệu ứng cánh hoa anh đào rơi
+# 3. Chỉnh màu sắc, cỡ chữ bản dịch
 st.markdown("""
 <style>
-    /* Hiệu ứng cánh hoa anh đào rơi nhẹ nhàng */
+    /* Khoảng trống trên cùng để bù lại thanh Header bị fixed */
+    .block-container {
+        padding-top: 5.5rem !important;
+    }
+
+    /* Hiệu ứng cánh hoa anh đào rơi */
     .sakura-container {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -45,43 +55,46 @@ st.markdown("""
         100% { transform: translateX(35px) rotate(45deg); }
     }
 
-    /* Thanh Header cố định (Sticky Header) với tông màu hoa anh đào */
-    .sticky-header {
-        position: -webkit-sticky;
-        position: sticky;
+    /* Khóa cố định 1 ô Header trên cùng (Fixed Header) */
+    .fixed-header {
+        position: fixed;
         top: 0;
-        z-index: 998;
-        background: linear-gradient(135deg, rgba(255, 240, 245, 0.95), rgba(255, 228, 238, 0.95));
+        left: 0;
+        right: 0;
+        height: 72px;
+        z-index: 9999;
+        background: linear-gradient(135deg, rgba(255, 240, 245, 0.96), rgba(255, 228, 238, 0.96));
         border-bottom: 2px solid #ffccd5;
-        border-radius: 0 0 16px 16px;
-        padding: 12px 20px;
-        margin: -1rem -1rem 1.5rem -1rem;
-        box-shadow: 0 4px 15px rgba(255, 182, 193, 0.25);
-        backdrop-filter: blur(8px);
+        padding: 10px 2rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-shadow: 0 4px 15px rgba(255, 182, 193, 0.3);
+        backdrop-filter: blur(10px);
     }
     @media (prefers-color-scheme: dark) {
-        .sticky-header {
-            background: linear-gradient(135deg, rgba(45, 20, 30, 0.95), rgba(30, 15, 25, 0.95));
+        .fixed-header {
+            background: linear-gradient(135deg, rgba(45, 20, 30, 0.96), rgba(30, 15, 25, 0.96));
             border-bottom: 2px solid #ff758c;
-            box-shadow: 0 4px 15px rgba(255, 117, 140, 0.2);
+            box-shadow: 0 4px 15px rgba(255, 117, 140, 0.25);
         }
     }
 
-    .sticky-title {
-        font-size: 1.65rem;
+    .fixed-title {
+        font-size: 1.45rem;
         font-weight: 800;
         margin: 0;
         color: #d81b60;
         letter-spacing: -0.5px;
     }
-    .sticky-subtitle {
-        font-size: 0.88rem;
-        color: #666;
+    .fixed-subtitle {
+        font-size: 0.85rem;
+        color: #555;
         margin: 2px 0 0 0;
     }
     @media (prefers-color-scheme: dark) {
-        .sticky-title { color: #ff80ab; }
-        .sticky-subtitle { color: #ccc; }
+        .fixed-title { color: #ff80ab; }
+        .fixed-subtitle { color: #ccc; }
     }
 
     /* Furigana & Văn bản tiếng Nhật */
@@ -89,11 +102,11 @@ st.markdown("""
     rt { font-size: 0.78rem; color: #e91e63; font-weight: 600; }
     .plain-jp-text { font-size: 1.25rem; line-height: 2.1rem; font-family: 'Hiragino Mincho Pro', 'Yu Mincho', serif; }
 
-    /* Dòng dịch tiếng Việt nổi bật, chữ to */
+    /* Dòng dịch tiếng Việt */
     .vi-translation-box {
-        background: rgba(255, 243, 224, 0.7);
+        background: rgba(255, 243, 224, 0.75);
         border-left: 4px solid #ff9800;
-        padding: 8px 14px;
+        padding: 9px 15px;
         border-radius: 0 8px 8px 0;
         margin-top: 8px;
         font-size: 1.05rem;
@@ -102,7 +115,7 @@ st.markdown("""
     }
     @media (prefers-color-scheme: dark) {
         .vi-translation-box {
-            background: rgba(60, 40, 20, 0.8);
+            background: rgba(60, 40, 20, 0.85);
             border-left: 4px solid #ffb74d;
             color: #ffe0b2;
         }
@@ -121,10 +134,10 @@ st.markdown("""
     <div class="petal"></div>
 </div>
 
-<!-- Header cố định bên trên -->
-<div class="sticky-header">
-    <div class="sticky-title">🌸 Luyện Đọc & Phân Tích Tiếng Nhật JLPT</div>
-    <div class="sticky-subtitle">Tự động dịch khổ, tra cứu Furigana, phân loại Ngữ pháp/Từ vựng N5–N1 và tạo bài tập luyện thi</div>
+<!-- Header cố định vĩnh viễn ở trên cùng -->
+<div class="fixed-header">
+    <div class="fixed-title">🌸 Luyện Đọc & Phân Tích Tiếng Nhật JLPT</div>
+    <div class="fixed-subtitle">Tự động dịch khổ, tra cứu Furigana, phân loại Ngữ pháp/Từ vựng N5–N1 và tạo bài tập luyện thi</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -133,9 +146,11 @@ api_key = st.secrets.get("GEMINI_API_KEY", None)
 if not api_key:
     api_key = st.sidebar.text_input("🔑 Nhập Gemini API Key của bạn:", type="password")
 
-# Khởi tạo session_state để lưu kết quả phân tích
+# Khởi tạo session_state để lưu kết quả và file âm thanh đọc AI
 if "analysis_data" not in st.session_state:
     st.session_state.analysis_data = None
+if "audio_bytes" not in st.session_state:
+    st.session_state.audio_bytes = None
 if "current_user_text" not in st.session_state:
     st.session_state.current_user_text = ""
 
@@ -154,7 +169,8 @@ with col_btn:
 
 SYSTEM_PROMPT = """
 Bạn là một chuyên gia ngôn ngữ học và giáo viên luyện thi tiếng Nhật JLPT cao cấp.
-Nhiệm vụ của bạn là tiếp nhận văn bản tiếng Nhật do người dùng cung cấp, phân tích chuyên sâu và trả về kết quả DUY NHẤT dưới định dạng JSON theo schema sau (không thêm bất kỳ lời dẫn nào ngoài JSON):
+Nhiệm vụ của bạn là tiếp nhận văn bản tiếng Nhật do người dùng cung cấp, phân tích chuyên sâu và trả về kết quả DUY NHẤT dưới định dạng JSON theo schema sau (không thêm bất kỳ lời dẫn nào ngoài JSON).
+LƯU Ý QUAN TRỌNG: Phải tạo CHÍNH XÁC ĐỦ 5 CÂU HỎI trắc nghiệm đọc hiểu (question_number từ 1 đến 5).
 {
   "summary": { "estimated_jlpt_level": "N3", "topic": "Chủ đề bài đọc", "word_count": 185 },
   "paragraphs": [
@@ -203,11 +219,10 @@ if analyze_btn:
     elif not user_text.strip():
         st.warning("⚠️ Vui lòng dán nội dung bài đọc trước khi bấm phân tích.")
     else:
-        with st.spinner("🌸 AI đang bóc tách ngữ pháp, từ vựng và tạo bài tập JLPT..."):
+        with st.spinner("🌸 AI đang phân tích bài đọc, tạo 5 câu hỏi JLPT và tạo giọng đọc âm thanh..."):
             try:
                 genai.configure(api_key=api_key)
 
-                # Sử dụng trực tiếp model chính thức mới nhất
                 model = genai.GenerativeModel(
                     model_name="gemini-3.6-flash",
                     generation_config={"response_mime_type": "application/json"}
@@ -215,6 +230,17 @@ if analyze_btn:
                 response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
                 st.session_state.analysis_data = json.loads(response.text)
                 st.session_state.current_user_text = user_text
+
+                # Tạo giọng đọc âm thanh tiếng Nhật (Text-to-Speech AI)
+                try:
+                    tts = gTTS(text=user_text, lang='ja')
+                    fp = io.BytesIO()
+                    tts.write_to_fp(fp)
+                    fp.seek(0)
+                    st.session_state.audio_bytes = fp.read()
+                except Exception as tts_err:
+                    st.session_state.audio_bytes = None
+
             except Exception as e:
                 st.error(f"Đã xảy ra lỗi khi gọi AI: {str(e)}")
 
@@ -231,11 +257,19 @@ if st.session_state.analysis_data:
 
     # Tabs chức năng
     tab_read, tab_grammar, tab_vocab, tab_kanji, tab_quiz = st.tabs([
-        "📖 Bài đọc & Dịch", "📝 Ngữ pháp", "📚 Từ vựng", "🈲 Hán tự (Kanji)", "❓ Câu hỏi JLPT"
+        "📖 Bài đọc & Dịch", "📝 Ngữ pháp", "📚 Từ vựng", "🈲 Hán tự (Kanji)", "❓ Câu hỏi JLPT (5 câu)"
     ])
 
-    # Tab 1: Bài đọc & Dịch
+    # Tab 1: Bài đọc & Dịch + Giọng đọc AI ở trên cùng
     with tab_read:
+        st.markdown("#### 🎧 Luyện nghe bài đọc (Giọng AI chuẩn bản xứ):")
+        if st.session_state.audio_bytes:
+            st.audio(st.session_state.audio_bytes, format='audio/mp3')
+        else:
+            st.info("💡 Bạn có thể bấm nghe lại khi phân tích bài đọc.")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
         for p in data.get("paragraphs", []):
             st.markdown("---")
             if show_furigana:
@@ -269,10 +303,11 @@ if st.session_state.analysis_data:
         ]
         st.dataframe(kanji_rows, use_container_width=True)
 
-    # Tab 5: Câu hỏi JLPT tương tác (Nút chọn A-B-C-D + Kiểm tra kết quả)
+    # Tab 5: 5 Câu hỏi JLPT tương tác
     with tab_quiz:
-        st.markdown("### ✍️ Luyện tập đọc hiểu JLPT")
-        for idx, q in enumerate(data.get("jlpt_practice_questions", [])):
+        st.markdown("### ✍️ Luyện tập đọc hiểu JLPT (Trọn bộ 5 câu)")
+        questions = data.get("jlpt_practice_questions", [])
+        for idx, q in enumerate(questions):
             q_num = q.get("question_number", idx + 1)
             st.markdown(f"#### Câu {q_num}: {q.get('question_text')}")
             st.caption(f"*(Dịch: {q.get('question_vietnamese')})*")
@@ -315,7 +350,7 @@ if st.session_state.analysis_data:
     with aff_col2:
         st.markdown("👉 [Giáo trình tiếng Nhật tổng hợp & Từ vựng](https://shopee.vn)")
 
-# 5. MỤC GÓP Ý CỦA NGƯỜI DÙNG
+# MỤC GÓP Ý CỦA NGƯỜI DÙNG
 st.markdown("<br><hr>", unsafe_allow_html=True)
 with st.expander("💌 Góp ý & Phản hồi phát triển trang web"):
     st.write("Chúng tôi luôn lắng nghe ý kiến của bạn để hoàn thiện công cụ luyện đọc tiếng Nhật tốt hơn mỗi ngày!")
