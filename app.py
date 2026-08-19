@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import json
 import io
+import re
 
 try:
     from gtts import gTTS
@@ -16,26 +17,20 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Cấu hình CSS:
-# 1. Ẩn thanh top bar mặc định của Streamlit để tiêu đề nổi bật rõ ràng, không bị đè.
-# 2. Cố định Sticky Header trực quan, luôn nhìn thấy 100% khi cuộn chuột.
-# 3. Hiệu ứng cánh hoa anh đào rơi.
+# Cấu hình CSS
 st.markdown("""
 <style>
-    /* Ẩn header mặc định màu trắng của Streamlit để không che mất tiêu đề */
     header[data-testid="stHeader"] {
         background: transparent !important;
         height: 0px !important;
         z-index: 1 !important;
     }
     
-    /* Canh lề trên vừa vặn */
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 3rem !important;
     }
 
-    /* Hiệu ứng cánh hoa anh đào rơi */
     .sakura-container {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -68,7 +63,6 @@ st.markdown("""
         100% { transform: translateX(35px) rotate(45deg); }
     }
 
-    /* Thanh Sticky Header cố định đẹp mắt, rõ chữ */
     .sticky-header-box {
         position: -webkit-sticky;
         position: sticky;
@@ -110,12 +104,10 @@ st.markdown("""
         .sticky-subtitle { color: #ddd !important; }
     }
 
-    /* Furigana & Văn bản tiếng Nhật */
     ruby { font-size: 1.35rem; line-height: 2.3rem; font-family: 'Hiragino Mincho Pro', 'Yu Mincho', serif; }
     rt { font-size: 0.78rem; color: #e91e63; font-weight: 600; }
     .plain-jp-text { font-size: 1.25rem; line-height: 2.1rem; font-family: 'Hiragino Mincho Pro', 'Yu Mincho', serif; }
 
-    /* Dòng dịch tiếng Việt nổi bật */
     .vi-translation-box {
         background: rgba(255, 243, 224, 0.75);
         border-left: 4px solid #ff9800;
@@ -135,7 +127,6 @@ st.markdown("""
     }
 </style>
 
-<!-- Hiệu ứng cánh hoa anh đào rơi -->
 <div class="sakura-container">
     <div class="petal"></div>
     <div class="petal"></div>
@@ -147,25 +138,21 @@ st.markdown("""
     <div class="petal"></div>
 </div>
 
-<!-- Header cố định vĩnh viễn ở trên cùng -->
 <div class="sticky-header-box">
     <div class="sticky-title">🌸 Luyện Đọc & Phân Tích Tiếng Nhật JLPT</div>
     <div class="sticky-subtitle">Tự động dịch khổ, tra cứu Furigana, phân loại Ngữ pháp/Từ vựng N5–N1 và tạo bài tập luyện thi</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Lấy API Key từ Secrets hoặc Sidebar
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 if not api_key:
     api_key = st.sidebar.text_input("🔑 Nhập Gemini API Key của bạn:", type="password")
 
-# Khởi tạo session_state để lưu kết quả và các trạng thái
 if "analysis_data" not in st.session_state:
     st.session_state.analysis_data = None
 if "current_user_text" not in st.session_state:
     st.session_state.current_user_text = ""
 
-# Khung nhập bài đọc
 user_text = st.text_area(
     "📋 Dán bài đọc tiếng Nhật vào đây:",
     height=160,
@@ -183,7 +170,7 @@ with col_btn:
 SYSTEM_PROMPT = """
 Bạn là một chuyên gia ngôn ngữ học và giáo viên luyện thi tiếng Nhật JLPT cao cấp.
 Nhiệm vụ của bạn là tiếp nhận văn bản tiếng Nhật do người dùng cung cấp, phân tích chuyên sâu và trả về kết quả DUY NHẤT dưới định dạng JSON theo schema sau (không thêm bất kỳ lời dẫn nào ngoài JSON).
-LƯU Ý QUAN TRỌNG: Phải tạo CHÍNH XÁC ĐỦ 5 CÂU HỎI trắc nghiệm đọc hiểu (question_number từ 1 đến 5).
+LƯU Ý: Phải tạo CHÍNH XÁC ĐỦ 5 CÂU HỎI trắc nghiệm đọc hiểu (question_number từ 1 đến 5). Tuyệt đối không để ký tự xuống dòng chưa escape trong chuỗi JSON.
 {
   "summary": { "estimated_jlpt_level": "N3", "topic": "Chủ đề bài đọc", "word_count": 185 },
   "paragraphs": [
@@ -226,6 +213,22 @@ LƯU Ý QUAN TRỌNG: Phải tạo CHÍNH XÁC ĐỦ 5 CÂU HỎI trắc nghiệ
 }
 """
 
+def clean_and_parse_json(raw_text):
+    text = raw_text.strip()
+    if text.startswith("```json"):
+        text = text[7:]
+    elif text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    text = text.strip()
+    
+    try:
+        return json.loads(text, strict=False)
+    except Exception:
+        cleaned = re.sub(r'[\x00-\x1f\x7f-\x9f]', lambda m: ' ' if m.group(0) not in ['\n', '\r', '\t'] else m.group(0), text)
+        return json.loads(cleaned, strict=False)
+
 if analyze_btn:
     if not api_key:
         st.error("⚠️ Vui lòng cấu hình Gemini API Key (trong Secrets hoặc thanh menu bên trái) để tiếp tục.")
@@ -241,7 +244,8 @@ if analyze_btn:
                     generation_config={"response_mime_type": "application/json"}
                 )
                 response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
-                st.session_state.analysis_data = json.loads(response.text)
+                
+                st.session_state.analysis_data = clean_and_parse_json(response.text)
                 st.session_state.current_user_text = user_text
 
             except Exception as e:
@@ -267,7 +271,6 @@ if st.session_state.analysis_data:
     with tab_read:
         st.markdown("#### 🎧 Luyện nghe bài đọc (Giọng AI chuẩn bản xứ):")
         
-        # Tạo giọng đọc âm thanh theo tốc độ đã chọn
         if TTS_AVAILABLE and st.session_state.current_user_text:
             try:
                 is_slow = True if "Chậm" in voice_speed else False
@@ -290,7 +293,6 @@ if st.session_state.analysis_data:
             else:
                 st.markdown(f"<div class='plain-jp-text'>{p.get('original_text')}</div>", unsafe_allow_html=True)
             
-            # Khối dịch to rõ, nổi bật
             st.markdown(f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch:</strong> {p.get('vietnamese_translation')}</div>", unsafe_allow_html=True)
 
     # Tab 2: Ngữ pháp
