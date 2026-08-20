@@ -3,6 +3,10 @@ import google.generativeai as genai
 import json
 import io
 import re
+import csv
+import os
+import html as html_lib
+import datetime
 import base64
 import pandas as pd
 
@@ -177,10 +181,24 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Lấy API Key
-api_key = st.secrets.get("GEMINI_API_KEY", None)
+# ============================================================
+# FIX #1: st.secrets có thể raise lỗi nếu không có secrets.toml,
+# và ô nhập key nằm trong sidebar đang collapsed mặc định ->
+# thêm try/except + gợi ý mở sidebar cho người dùng thấy.
+# ============================================================
+try:
+    api_key = st.secrets.get("GEMINI_API_KEY", None)
+except Exception:
+    api_key = None
+
 if not api_key:
     api_key = st.sidebar.text_input("🔑 Nhập Gemini API Key:", type="password")
+if not api_key:
+    st.info(
+        "💡 Cần Gemini API Key để dùng công cụ này. Mở **thanh bên trái** "
+        "(bấm mũi tên **☰** ở góc trên-trái) để nhập key, hoặc lấy key miễn phí "
+        "tại [Google AI Studio](https://aistudio.google.com/apikey)."
+    )
 
 if "analysis_data" not in st.session_state:
     st.session_state.analysis_data = None
@@ -188,6 +206,10 @@ if "current_user_text" not in st.session_state:
     st.session_state.current_user_text = ""
 if "raw_audio_b64" not in st.session_state:
     st.session_state.raw_audio_b64 = None
+# FIX #2: id tăng dần cho mỗi lần phân tích thành công, dùng để
+# tạo key duy nhất cho các widget của quiz (xem tab_quiz bên dưới).
+if "analysis_id" not in st.session_state:
+    st.session_state.analysis_id = 0
 
 # Giao diện 2 cột
 col_left, col_right = st.columns([6.8, 3.2], gap="medium")
@@ -227,6 +249,8 @@ with col_right:
         """)
     st.markdown('</div>', unsafe_allow_html=True)
 
+# FIX #3: nói rõ ràng cho AI chỉ bọc <ruby> quanh phần Hán tự,
+# không trùm cả okurigana/hiragana đi kèm -> furigana đặt đúng vị trí.
 SYSTEM_PROMPT = """
 Bạn là giáo viên tiếng Nhật JLPT cao cấp. Hãy phân tích bài đọc tiếng Nhật và trả về kết quả định dạng JSON thuần túy (không bọc markdown, không thêm chữ thừa) theo cấu trúc sau:
 {
@@ -234,7 +258,7 @@ Bạn là giáo viên tiếng Nhật JLPT cao cấp. Hãy phân tích bài đọ
   "paragraphs": [
     {
       "original_text": "văn bản gốc",
-      "furigana_html": "văn bản có thẻ <ruby>Hán tự<rt>cách đọc</rt></ruby>",
+      "furigana_html": "văn bản có thẻ <ruby>Hán tự<rt>cách đọc</rt></ruby> CHỈ bọc quanh các ký tự Hán tự liên tiếp, giữ nguyên hiragana/katakana/okurigana bên ngoài thẻ ruby",
       "vietnamese_translation": "dịch nghĩa tiếng Việt súc tích"
     }
   ],
@@ -263,8 +287,9 @@ Bạn là giáo viên tiếng Nhật JLPT cao cấp. Hãy phân tích bài đọ
     }
   ]
 }
-Chỉ tạo 3 đến 5 câu hỏi trắc nghiệm hay nhất. Đảm bảo JSON hợp lệ, không chứa ký tự xuống dòng chưa escape.
+Chỉ tạo 3 đến 5 câu hỏi trắc nghiệm hay nhất, mỗi câu phải có "question_number" DUY NHẤT không trùng lặp (1, 2, 3...). Đảm bảo JSON hợp lệ, không chứa ký tự xuống dòng chưa escape.
 """
+
 
 def clean_and_parse_json(raw_text):
     text = raw_text.strip()
@@ -276,4 +301,290 @@ def clean_and_parse_json(raw_text):
         text = text[:-3]
     text = text.strip()
     try:
-        return json.loads
+        return json.loads(text, strict=False)
+    except Exception:
+        cleaned = re.sub(r'[\x00-\x1f\x7f-\x9f]', lambda m: ' ' if m.group(0) not in ['\n', '\r', '\t'] else m.group(0), text)
+        return json.loads(cleaned, strict=False)
+
+
+# FIX #4: sanitize HTML do AI trả về (furigana_html) trước khi render
+# với unsafe_allow_html=True — chỉ cho phép <ruby>/<rt>/<rb>, xóa mọi
+# thẻ khác để tránh vỡ layout hoặc lọt thẻ lạ (<script>, <style>...).
+_ALLOWED_RUBY_TAGS = r'ruby|rt|rb'
+
+
+def sanitize_furigana_html(raw_html: str) -> str:
+    if not raw_html:
+        return ""
+    return re.sub(rf'</?(?!(?:{_ALLOWED_RUBY_TAGS})\b)[a-zA-Z][^>]*>', '', raw_html)
+
+
+# FIX #5: cắt văn bản cho TTS tại ranh giới câu tiếng Nhật gần nhất
+# thay vì cắt cứng ở ký tự thứ 600 (dễ cắt giữa cụm từ).
+def smart_truncate_ja(text: str, limit: int = 600) -> str:
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    for punct in ("。", "！", "？", "\n"):
+        idx = cut.rfind(punct)
+        if idx > limit * 0.5:
+            return cut[: idx + 1]
+    return cut
+
+
+FEEDBACK_FILE = "feedback_log.csv"
+
+
+def save_feedback(name: str, fb_type: str, content: str) -> None:
+    file_exists = os.path.isfile(FEEDBACK_FILE)
+    with open(FEEDBACK_FILE, "a", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["timestamp", "name", "type", "content"])
+        writer.writerow([datetime.datetime.now().isoformat(timespec="seconds"), name, fb_type, content])
+
+
+if analyze_btn:
+    if not api_key:
+        st.error("⚠️ Vui lòng cung cấp Gemini API Key để tiếp tục.")
+    elif not user_text.strip():
+        st.warning("⚠️ Vui lòng nhập nội dung bài đọc.")
+    else:
+        with st.status("🌸 Đang xử lý bài học...", expanded=True) as status:
+            try:
+                st.write("🧠 AI đang phân tích bài đọc...")
+                genai.configure(api_key=api_key)
+
+                model = genai.GenerativeModel(
+                    # Dùng alias "gemini-flash-latest" thay vì ghim cứng version,
+                    # để app tự trỏ tới bản Flash mới nhất mà Google phát hành,
+                    # không phải sửa code mỗi khi có model mới ra mắt.
+                    model_name="gemini-flash-latest",
+                    generation_config={
+                        "response_mime_type": "application/json",
+                        "temperature": 0.2
+                    }
+                )
+
+                response = model.generate_content(f"{SYSTEM_PROMPT}\n\nBài đọc:\n{user_text}")
+                st.session_state.analysis_data = clean_and_parse_json(response.text)
+                st.session_state.current_user_text = user_text
+                # FIX #2 (tiếp): tăng analysis_id mỗi lần phân tích MỚI thành công,
+                # để các widget quiz ở bài đọc mới không bị dính state của bài cũ.
+                st.session_state.analysis_id += 1
+
+                # FIX #6: luôn reset audio cũ trước khi thử tạo audio mới,
+                # tránh trường hợp TTS lỗi/không khả dụng mà vẫn giữ audio
+                # của bài đọc trước đó (nghe nhầm bài).
+                st.session_state.raw_audio_b64 = None
+                st.write("🎙️ Đang tạo bản thu âm phát âm AI...")
+                if TTS_AVAILABLE:
+                    try:
+                        audio_text = smart_truncate_ja(user_text, 600)
+                        tts = gTTS(text=audio_text, lang='ja', slow=False)
+                        fp = io.BytesIO()
+                        tts.write_to_fp(fp)
+                        fp.seek(0)
+                        st.session_state.raw_audio_b64 = base64.b64encode(fp.read()).decode()
+                    except Exception:
+                        st.session_state.raw_audio_b64 = None
+
+                status.update(label="🎉 Phân tích hoàn tất thành công!", state="complete", expanded=False)
+
+            except Exception as e:
+                status.update(label="❌ Có lỗi xảy ra!", state="error", expanded=True)
+                st.error(f"Chi tiết lỗi: {str(e)}")
+
+# HIỂN THỊ KẾT QUẢ
+if st.session_state.analysis_data:
+    data = st.session_state.analysis_data
+
+    sum_col1, sum_col2 = st.columns(2)
+    sum_col1.info(f"🏷️ **Cấp độ ước tính:** {data.get('summary', {}).get('estimated_jlpt_level', 'N/A')}")
+    sum_col2.info(f"📖 **Chủ đề:** {data.get('summary', {}).get('topic', 'Chung')}")
+
+    tab_read, tab_grammar, tab_vocab, tab_kanji, tab_quiz = st.tabs([
+        "📖 Trình Đọc & Dịch", "📝 Ngữ pháp", "📚 Từ vựng & Flashcard", "🈲 Hán tự (Kanji)", "❓ Câu hỏi Luyện thi JLPT"
+    ])
+
+    # Tab 1: Đọc & Dịch
+    with tab_read:
+        st.markdown("#### 🎧 Luyện nghe bài đọc (Giọng AI chuẩn Nhật):")
+        aud_col, spd_col = st.columns([3.5, 1.5])
+        with spd_col:
+            speed_val = st.selectbox(
+                "⚡ Tốc độ phát:",
+                [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+                index=2,
+                format_func=lambda x: f"x{x}"
+            )
+
+        with aud_col:
+            if st.session_state.raw_audio_b64:
+                audio_html = f"""
+                <audio id="custom_audio" controls style="width: 100%; height: 45px;">
+                    <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
+                </audio>
+                <script>
+                    var audio = document.getElementById('custom_audio');
+                    if (audio) {{ audio.playbackRate = {speed_val}; }}
+                </script>
+                """
+                st.components.v1.html(audio_html, height=55)
+                st.caption("⚠️ Đổi tốc độ phát sẽ tải lại audio từ đầu (giới hạn kỹ thuật của trình phát nhúng).")
+            else:
+                st.info("💡 Không thể tải file âm thanh cho bài đọc này.")
+
+        st.markdown("---")
+
+        ctrl_col1, ctrl_col2 = st.columns(2)
+        with ctrl_col1:
+            furigana_mode = st.radio(
+                "🌸 Chế độ hiển thị Furigana:",
+                ["Ẩn toàn bộ Furigana", "Hiện toàn bộ Furigana"],
+                horizontal=True
+            )
+        with ctrl_col2:
+            show_translation = st.toggle("🇻🇳 Hiển thị bản dịch tiếng Việt", value=True)
+
+        for p in data.get("paragraphs", []):
+            if furigana_mode == "Hiện toàn bộ Furigana":
+                jp_content = sanitize_furigana_html(p.get('furigana_html', p.get('original_text', '')))
+            else:
+                jp_content = html_lib.escape(p.get('original_text', ''))
+
+            trans_html = ""
+            if show_translation and p.get('vietnamese_translation'):
+                trans_text = html_lib.escape(p.get('vietnamese_translation'))
+                trans_html = f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch:</strong> {trans_text}</div>"
+
+            full_card_html = f"""
+            <div class="reader-paragraph-card">
+                <div class="jp-text-line">{jp_content}</div>
+                {trans_html}
+            </div>
+            """
+            st.markdown(full_card_html, unsafe_allow_html=True)
+
+    # Tab 2: Ngữ pháp
+    with tab_grammar:
+        for g in data.get("grammar_analysis", []):
+            with st.expander(f"📌 {g.get('pattern')} [{g.get('jlpt_level')}] - {g.get('meaning')}"):
+                st.markdown(f"- **Ngữ cảnh trong bài:** `{g.get('usage_in_text')}`")
+                st.markdown(f"- **Giải thích chi tiết:** {g.get('explanation')}")
+
+    # Tab 3: Từ vựng & Anki Flashcard
+    with tab_vocab:
+        raw_vocab = data.get("vocabulary_list", [])
+        vocab_rows = [
+            {"Từ vựng": v.get("word"), "Cách đọc": v.get("reading"), "Cấp độ": v.get("jlpt_level"), "Từ loại": v.get("part_of_speech"), "Ý nghĩa": v.get("vietnamese_meaning")}
+            for v in raw_vocab
+        ]
+
+        if vocab_rows:
+            anki_df = pd.DataFrame([
+                {
+                    "Front": f"{v.get('word')} [{v.get('reading')}]",
+                    "Back": f"{v.get('vietnamese_meaning')}<br><small>{v.get('part_of_speech')} | {v.get('jlpt_level')}</small>"
+                }
+                for v in raw_vocab
+            ])
+            csv_buffer = anki_df.to_csv(index=False, header=False).encode('utf-8')
+
+            st.download_button(
+                label="📥 Tải bộ từ vựng nhập vào Anki Flashcard (.CSV)",
+                data=csv_buffer,
+                file_name="anki_vocab_deck.csv",
+                mime="text/csv",
+                type="secondary"
+            )
+            st.caption("💡 Khi import vào Anki, nhớ tick **\"Allow HTML in fields\"** để thẻ hiển thị đúng định dạng.")
+
+        st.dataframe(vocab_rows, use_container_width=True)
+
+    # Tab 4: Kanji
+    with tab_kanji:
+        kanji_rows = [
+            {"Chữ Hán": k.get("kanji"), "Hán Việt": k.get("han_viet"), "Cấp độ": k.get("jlpt_level"), "Âm On": k.get("onyomi"), "Âm Kun": k.get("kunyomi"), "Ý nghĩa": k.get("meaning")}
+            for k in data.get("kanji_list", [])
+        ]
+        st.dataframe(kanji_rows, use_container_width=True)
+
+    # Tab 5: Câu hỏi JLPT
+    with tab_quiz:
+        st.markdown("### ✍️ Luyện tập đọc hiểu JLPT")
+        questions = data.get("jlpt_practice_questions", [])
+        for idx, q in enumerate(questions):
+            q_num = q.get("question_number", idx + 1)
+            st.markdown(f"#### Câu {q_num}: {q.get('question_text')}")
+            st.caption(f"*(Dịch: {q.get('question_vietnamese')})*")
+
+            opts = q.get("options", {})
+            choice_keys = [k for k in ["A", "B", "C", "D"] if k in opts]
+
+            # FIX #2 (tiếp): key ghép analysis_id + idx (vị trí trong danh sách,
+            # KHÔNG dùng q_num do AI trả về) -> luôn duy nhất trong 1 lần phân
+            # tích (kể cả khi AI lỡ đánh trùng số câu) VÀ luôn được reset khi
+            # có bài phân tích mới, không còn dính đáp án của bài cũ.
+            user_choice = st.radio(
+                f"Chọn đáp án cho câu {q_num}:",
+                options=choice_keys,
+                format_func=lambda x: f"{x}. {opts.get(x, '')}",
+                key=f"quiz_radio_{st.session_state.analysis_id}_{idx}",
+                index=None
+            )
+
+            correct_ans = q.get("correct_answer")
+            opt_analysis = q.get("option_analysis", {})
+
+            if user_choice is not None:
+                if not correct_ans:
+                    st.warning("⚠️ Câu này thiếu đáp án đúng từ AI, không thể chấm điểm.")
+                elif user_choice == correct_ans:
+                    st.success(f"🎉 **Chính xác!** Đáp án đúng là **{correct_ans}**.")
+                else:
+                    st.error(f"❌ **Chưa chính xác!** Bạn đã chọn **{user_choice}**, đáp án đúng là **{correct_ans}**.")
+
+                st.markdown("**🔍 Phân tích chi tiết:**")
+                for opt_k in choice_keys:
+                    explanation_text = opt_analysis.get(opt_k, "Chưa có phân tích.")
+                    if opt_k == correct_ans:
+                        st.markdown(f"- ✅ **Đáp án {opt_k}:** {explanation_text}")
+                    else:
+                        st.markdown(f"- ❌ **Đáp án {opt_k}:** {explanation_text}")
+            st.markdown("---")
+
+    # Tài liệu gợi ý
+    st.markdown("### 📚 Tài liệu gợi ý nâng cao trình độ")
+    st.caption("*Trang web có thể nhận hoa hồng khi bạn mua qua liên kết giới thiệu mà không phát sinh thêm chi phí.*")
+    aff_col1, aff_col2 = st.columns(2)
+    with aff_col1:
+        st.markdown("👉 [Tham khảo trọn bộ sách luyện thi JLPT N3-N1 chính hãng](https://shopee.vn)")
+    with aff_col2:
+        st.markdown("👉 [Giáo trình tiếng Nhật tổng hợp & Từ vựng](https://shopee.vn)")
+    # LƯU Ý: 2 link trên hiện là link trang chủ Shopee (placeholder), chưa
+    # phải link affiliate tới sản phẩm cụ thể — cần thay bằng link thật.
+
+# Form góp ý
+st.markdown("<br><hr>", unsafe_allow_html=True)
+with st.expander("💌 Góp ý & Phản hồi phát triển trang web"):
+    st.write("Chúng tôi luôn lắng nghe ý kiến của bạn để hoàn thiện công cụ luyện đọc tốt hơn.")
+    with st.form("feedback_form", clear_on_submit=True):
+        fb_name = st.text_input("Tên hoặc Email của bạn (không bắt buộc):")
+        fb_type = st.selectbox("Loại góp ý:", ["Đề xuất tính năng mới", "Báo lỗi phân tích/AI", "Góp ý giao diện", "Khác"])
+        fb_content = st.text_area("Nội dung góp ý chi tiết:")
+        submitted = st.form_submit_button("📩 Gửi góp ý")
+        if submitted:
+            if fb_content.strip():
+                # FIX #7: trước đây thông báo "đã ghi nhận" nhưng KHÔNG lưu
+                # góp ý ở đâu cả — giờ ghi vào feedback_log.csv thật sự.
+                # Lưu ý: trên môi trường cloud (vd. Streamlit Community Cloud)
+                # ổ đĩa là ephemeral, file này sẽ mất khi app khởi động lại
+                # -> nếu cần lưu lâu dài, nên đổi sang Google Sheet/DB/email/webhook.
+                try:
+                    save_feedback(fb_name, fb_type, fb_content)
+                    st.success("🌸 Cảm ơn bạn! Góp ý đã được ghi nhận.")
+                except Exception:
+                    st.warning("Có lỗi khi lưu góp ý, nhưng cảm ơn phản hồi của bạn!")
+            else:
+                st.warning("⚠️ Vui lòng nhập nội dung trước khi gửi.")
