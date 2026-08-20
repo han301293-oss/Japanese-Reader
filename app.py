@@ -122,6 +122,21 @@ st.markdown("""
         }
     }
 
+    /* Hộp liên kết nguồn đọc */
+    .resource-box {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 16px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+    @media (prefers-color-scheme: dark) {
+        .resource-box {
+            background-color: #2b262d;
+            border-color: #423b45;
+        }
+    }
+
     /* Hiệu ứng cánh hoa anh đào rơi */
     .sakura-container {
         position: fixed;
@@ -188,27 +203,43 @@ if "current_user_text" not in st.session_state:
 if "raw_audio_b64" not in st.session_state:
     st.session_state.raw_audio_b64 = None
 
-# Kho bài đọc mẫu theo cấp độ JLPT
-SAMPLE_STORIES = {
-    "✍️ Tự nhập bài đọc của bạn": "",
-    "🟢 [N5] Giới thiệu bản thân (自己紹介)": "初めまして。私の名前はナムです。ベトナムのハノイから来ました。今年二十二歳です。趣味は音楽を聴くことと、日本語を勉強することです。日本の文化が大好きですから、日本で働きたいです。どうぞよろしくお願いします。",
-    "🔵 [N4] Chuyến du lịch Kyoto (京都の旅行)": "先週の週末、友達と一緒に京都へ行きました。京都はとても古い町で、有名なお寺や神社がたくさんあります。金閣寺を見たとき、とてもきれいだと思いました。写真をたくさん撮ったり、おいしい抹茶アイスを食べたりして、楽しかったです。",
-    "🟡 [N3] Bản tin thời tiết (天気予報と生活)": "気象庁の発表によりますと、明日は全国的に晴れる見込みですが、午後は大気の状態が不安定になり、急な雷雨に注意が必要です。特に山沿いの地域では、短時間に激しい雨が降る恐れがあります。外出される際は、雨具をお持ちください。",
-    "🟠 [N2] Trí tuệ nhân tạo và tương lai (AIと未来社会)": "近年、AI技術の発展は目覚ましく、医療や教育など様々な分野での活用が進んでいる。AIは膨大なデータを瞬時に処理し、人々の生活を便利にする一方で、雇用の変化や倫理的な課題も指摘されている。技術を盲信するのではなく、人間が主体的に共存していく姿勢が求められている。"
-}
+# BỐ CỤC 2 CỘT: Cột trái nhập văn bản | Cột phải kho nguồn tài liệu đọc tiếng Nhật
+col_left, col_right = st.columns([6.8, 3.2], gap="medium")
 
-selected_sample = st.selectbox("📚 Chọn bài đọc mẫu có sẵn hoặc tự nhập:", list(SAMPLE_STORIES.keys()))
-default_input = SAMPLE_STORIES[selected_sample]
+with col_left:
+    user_text = st.text_area(
+        "📋 Dán bài đọc tiếng Nhật vào đây:",
+        height=230,
+        placeholder="Sao chép bất kỳ bài báo, truyện ngắn hoặc bài thi tiếng Nhật nào và dán vào đây để phân tích..."
+    )
+    analyze_btn = st.button("🚀 Bắt đầu Phân tích & Tạo bài học", type="primary", use_container_width=True)
 
-# Khung nhập bài đọc
-user_text = st.text_area(
-    "📋 Dán bài đọc tiếng Nhật vào đây:",
-    value=default_input,
-    height=160,
-    placeholder="例：三日が過ぎたとき、おばあさんはおじいさんに言いました。「どうして、あんなに美しい布を織れるのだろう。ちょっとのぞいてみよう」..."
-)
+with col_right:
+    st.markdown('<div class="resource-box">', unsafe_allow_html=True)
+    st.markdown("#### 🌐 Nguồn bài đọc tiếng Nhật uy tín")
+    st.caption("Truy cập các trang báo/truyện chuẩn theo trình độ, copy bài viết và dán sang ô bên trái:")
 
-analyze_btn = st.button("🚀 Bắt đầu Phân tích & Tạo bài học", type="primary", use_container_width=True)
+    with st.expander("🟢 Sơ cấp (N5 - N4)", expanded=True):
+        st.markdown("""
+        * 📰 [NHK News Web Easy](https://www3.nhk.or.jp/news/easy/): Tin tức tiếng Nhật đơn giản có sẵn Furigana.
+        * 📖 [Tadoku Graded Readers](https://tadoku.org/japanese/free-books/): Thư viện truyện tranh và sách đọc theo cấp độ miễn phí.
+        * 🧒 [Hukumusume Fairy Tales](http://hukumusume.com/douwa/): Kho truyện cổ tích thiếu nhi Nhật Bản kèm tranh vẽ.
+        """)
+
+    with st.expander("🟡 Trung cấp (N3 - N2)"):
+        st.markdown("""
+        * 📰 [Watanoc](http://watanoc.com/): Tạp chí văn hóa & đời sống Nhật viết bằng tiếng Nhật dễ hiểu (N4-N3).
+        * 📰 [Mainichi Shimbun (Tiểu học)](https://mainichi.jp/maisho/): Báo học sinh Nhật, ngữ cảnh thực tế, từ vựng phong phú.
+        * 📝 [Note.com (Nhật ký/Blog)](https://note.com/): Nơi người Nhật chia sẻ quan điểm cá nhân và tản văn ngắn.
+        """)
+
+    with st.expander("🔴 Cao cấp (N1 & Báo chí thực tế)"):
+        st.markdown("""
+        * 🗞️ [Asahi Shimbun (朝日新聞)](https://www.asahi.com/): Xã luận & bài phân tích chính trị - kinh tế chuyên sâu.
+        * 🗞️ [Yahoo Japan News](https://news.yahoo.co.jp/): Điểm tin thời sự và bình luận xã hội thực tế nóng hổi.
+        * 📚 [Aozora Bunko (青空文庫)](https://www.aozora.gr.jp/): Kho tàng văn học kinh điển Nhật Bản hoàn toàn miễn phí.
+        """)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 SYSTEM_PROMPT = """
 Bạn là một chuyên gia ngôn ngữ học và giáo viên luyện thi tiếng Nhật JLPT cao cấp.
@@ -280,8 +311,9 @@ if analyze_btn:
         with st.spinner("🌸 AI đang phân tích bài đọc, tạo dữ liệu ngữ pháp, từ vựng và 5 câu hỏi JLPT..."):
             try:
                 genai.configure(api_key=api_key)
+                # CẬP NHẬT MODEL CHÍNH XÁC: gemini-3.6-flash
                 model = genai.GenerativeModel(
-                    model_name="gemini-2.5-flash",
+                    model_name="gemini-3.6-flash",
                     generation_config={"response_mime_type": "application/json"}
                 )
                 response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
