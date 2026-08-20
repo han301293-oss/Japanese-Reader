@@ -9,6 +9,8 @@ import html as html_lib
 import datetime
 import base64
 import pandas as pd
+import gspread
+from google.oauth2.service_account import Credentials
 
 try:
     from gtts import gTTS
@@ -143,6 +145,40 @@ st.markdown("""
         }
     }
 
+    /* Tooltip cho từ vựng: hover/chạm vào từ trong bài đọc để xem nghĩa */
+    .jp-vocab-word {
+        position: relative;
+        border-bottom: 2px dotted #e91e63;
+        cursor: help;
+    }
+    .jp-vocab-word:hover::after,
+    .jp-vocab-word:focus::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 50%;
+        bottom: 130%;
+        transform: translateX(-50%);
+        background: #2c2c2c;
+        color: #fff;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        z-index: 1000;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .jp-vocab-word:hover::before,
+    .jp-vocab-word:focus::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: 118%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: #2c2c2c;
+        z-index: 1000;
+    }
+
     .sakura-container {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -223,31 +259,38 @@ with col_left:
     analyze_btn = st.button("🚀 Bắt đầu Phân tích & Tạo bài học", type="primary", use_container_width=True)
 
 with col_right:
-    st.markdown('<div class="resource-box">', unsafe_allow_html=True)
-    st.markdown("#### 🌐 Nguồn bài đọc tiếng Nhật uy tín")
-    st.caption("Copy bài viết từ các trang sau và dán sang ô bên trái:")
+    # FIX #8 (UI): trước đây mở thẻ <div class="resource-box"> bằng MỘT
+    # lệnh st.markdown riêng rồi đóng bằng lệnh khác ở cuối — nhưng mỗi
+    # st.markdown/st.expander render trong khối DOM RIÊNG của nó, nên thẻ
+    # <div> mở không hề bọc được các expander bên trong => trình duyệt tự
+    # đóng thẻ ngay tại chỗ, tạo ra một Ô XÁM RỖNG (đúng phần bạn khoanh đỏ
+    # "1. thừa ô màu xám"). Thay bằng st.container(border=True, height=...)
+    # — cách đúng của Streamlit để có 1 khung thật sự bao các widget bên
+    # trong, đồng thời có chiều cao cố định kèm thanh cuộn riêng.
+    with st.container(border=True, height=430):
+        st.markdown("#### 🌐 Nguồn bài đọc tiếng Nhật uy tín")
+        st.caption("Copy bài viết từ các trang sau và dán sang ô bên trái:")
 
-    with st.expander("🟢 Sơ cấp (N5 - N4)", expanded=True):
-        st.markdown("""
-        * 📰 [NHK News Easy](https://www3.nhk.or.jp/news/easy/): Tin tức tiếng Nhật đơn giản có Furigana.
-        * 📖 [Tadoku Graded Readers](https://tadoku.org/japanese/free-books/): Sách truyện ngắn chia theo cấp độ.
-        * 🧒 [Hukumusume Fairy Tales](http://hukumusume.com/douwa/): Truyện cổ tích thiếu nhi Nhật Bản.
-        """)
+        with st.expander("🟢 Sơ cấp (N5 - N4)", expanded=True):
+            st.markdown("""
+            * 📰 [NHK News Easy](https://www3.nhk.or.jp/news/easy/): Tin tức tiếng Nhật đơn giản có Furigana.
+            * 📖 [Tadoku Graded Readers](https://tadoku.org/japanese/free-books/): Sách truyện ngắn chia theo cấp độ.
+            * 🧒 [Hukumusume Fairy Tales](http://hukumusume.com/douwa/): Truyện cổ tích thiếu nhi Nhật Bản.
+            """)
 
-    with st.expander("🟡 Trung cấp (N3 - N2)"):
-        st.markdown("""
-        * 📰 [Watanoc](http://watanoc.com/): Tạp chí văn hóa viết bằng tiếng Nhật dễ hiểu.
-        * 📰 [Mainichi Shimbun (Thiếu nhi)](https://mainichi.jp/maisho/): Báo học sinh Nhật Bản.
-        * 📝 [Note.com](https://note.com/): Blog và tản văn của người bản xứ.
-        """)
+        with st.expander("🟡 Trung cấp (N3 - N2)"):
+            st.markdown("""
+            * 📰 [Watanoc](http://watanoc.com/): Tạp chí văn hóa viết bằng tiếng Nhật dễ hiểu.
+            * 📰 [Mainichi Shimbun (Thiếu nhi)](https://mainichi.jp/maisho/): Báo học sinh Nhật Bản.
+            * 📝 [Note.com](https://note.com/): Blog và tản văn của người bản xứ.
+            """)
 
-    with st.expander("🔴 Cao cấp (N1 & Báo chí thực tế)"):
-        st.markdown("""
-        * 🗞️ [Asahi Shimbun (朝日新聞)](https://www.asahi.com/): Báo xã luận chính luận chuyên sâu.
-        * 🗞️ [Yahoo Japan News](https://news.yahoo.co.jp/): Tin tức đời sống nóng hổi.
-        * 📚 [Aozora Bunko (青空文庫)](https://www.aozora.gr.jp/): Kho văn học cổ điển Nhật Bản.
-        """)
-    st.markdown('</div>', unsafe_allow_html=True)
+        with st.expander("🔴 Cao cấp (N1 & Báo chí thực tế)"):
+            st.markdown("""
+            * 🗞️ [Asahi Shimbun (朝日新聞)](https://www.asahi.com/): Báo xã luận chính luận chuyên sâu.
+            * 🗞️ [Yahoo Japan News](https://news.yahoo.co.jp/): Tin tức đời sống nóng hổi.
+            * 📚 [Aozora Bunko (青空文庫)](https://www.aozora.gr.jp/): Kho văn học cổ điển Nhật Bản.
+            """)
 
 # FIX #3: nói rõ ràng cho AI chỉ bọc <ruby> quanh phần Hán tự,
 # không trùm cả okurigana/hiragana đi kèm -> furigana đặt đúng vị trí.
@@ -269,7 +312,12 @@ Bạn là giáo viên tiếng Nhật JLPT cao cấp. Hãy phân tích bài đọ
     { "word": "Từ", "reading": "Cách đọc", "part_of_speech": "Từ loại", "jlpt_level": "N3", "vietnamese_meaning": "Nghĩa" }
   ],
   "kanji_list": [
-    { "kanji": "Hán tự", "han_viet": "ÂM HÁN", "jlpt_level": "N3", "onyomi": "On", "kunyomi": "Kun", "meaning": "Nghĩa" }
+    {
+      "kanji": "Hán tự", "han_viet": "ÂM HÁN", "jlpt_level": "N3", "onyomi": "On", "kunyomi": "Kun", "meaning": "Nghĩa",
+      "example_words": [
+        { "word": "Từ vựng ví dụ chứa Hán tự này", "reading": "Cách đọc", "meaning": "Nghĩa tiếng Việt" }
+      ]
+    }
   ],
   "jlpt_practice_questions": [
     {
@@ -287,6 +335,9 @@ Bạn là giáo viên tiếng Nhật JLPT cao cấp. Hãy phân tích bài đọ
     }
   ]
 }
+YÊU CẦU VỀ ĐỘ ĐẦY ĐỦ:
+- "vocabulary_list": liệt kê ĐẦY ĐỦ các từ vựng đáng chú ý trong bài (ưu tiên từ N3 trở lên, và mọi từ ít gặp/khó với người học), không giới hạn số lượng tối đa, không bỏ sót từ chỉ vì bài dài.
+- "kanji_list": liệt kê TẤT CẢ Hán tự xuất hiện trong bài (không lặp lại Hán tự đã liệt kê). Với MỖI Hán tự, bổ sung 2-3 từ vựng ví dụ thường gặp có chứa Hán tự đó (không nhất thiết phải xuất hiện trong bài đọc) kèm cách đọc và nghĩa tiếng Việt, để người học mở rộng vốn từ ngoài phạm vi bài đọc.
 Chỉ tạo 3 đến 5 câu hỏi trắc nghiệm hay nhất, mỗi câu phải có "question_number" DUY NHẤT không trùng lặp (1, 2, 3...). Đảm bảo JSON hợp lệ, không chứa ký tự xuống dòng chưa escape.
 """
 
@@ -319,6 +370,46 @@ def sanitize_furigana_html(raw_html: str) -> str:
     return re.sub(rf'</?(?!(?:{_ALLOWED_RUBY_TAGS})\b)[a-zA-Z][^>]*>', '', raw_html)
 
 
+# FIX #9 (UI): hover/chạm vào một từ trong bài đọc sẽ hiện tooltip gồm
+# cách đọc + từ loại + nghĩa tiếng Việt, lấy dữ liệu từ "vocabulary_list".
+# Chỉ thay thế trong các ĐOẠN VĂN BẢN THUẦN (không đụng vào bên trong các
+# thẻ HTML có sẵn như <ruby>/<rt>) để không phá vỡ cấu trúc furigana.
+def build_vocab_tooltip_index(vocabulary_list: list) -> dict:
+    idx = {}
+    for v in vocabulary_list or []:
+        w = (v.get("word") or "").strip()
+        if w:
+            idx[w] = v
+    return idx
+
+
+def wrap_vocab_tooltips(html_or_text: str, vocab_index: dict) -> str:
+    if not html_or_text or not vocab_index:
+        return html_or_text
+    words_sorted = sorted(vocab_index.keys(), key=len, reverse=True)
+    pattern = re.compile('|'.join(re.escape(w) for w in words_sorted))
+
+    def _sub(m):
+        w = m.group(0)
+        info = vocab_index[w]
+        reading = html_lib.escape(info.get("reading", ""))
+        pos = html_lib.escape(info.get("part_of_speech", ""))
+        meaning = html_lib.escape(info.get("vietnamese_meaning", ""))
+        tooltip = f"{reading} · {pos} · {meaning}".strip(" ·")
+        return f'<span class="jp-vocab-word" data-tooltip="{tooltip}" tabindex="0">{w}</span>'
+
+    # Chỉ áp dụng lên các đoạn text NẰM NGOÀI thẻ HTML có sẵn (nếu có),
+    # giữ nguyên các thẻ <ruby>, <rt>... không đụng vào bên trong chúng.
+    segments = re.split(r'(<[^>]+>)', html_or_text)
+    out = []
+    for seg in segments:
+        if seg.startswith('<') and seg.endswith('>'):
+            out.append(seg)
+        else:
+            out.append(pattern.sub(_sub, seg))
+    return ''.join(out)
+
+
 # FIX #5: cắt văn bản cho TTS tại ranh giới câu tiếng Nhật gần nhất
 # thay vì cắt cứng ở ký tự thứ 600 (dễ cắt giữa cụm từ).
 def smart_truncate_ja(text: str, limit: int = 600) -> str:
@@ -332,16 +423,56 @@ def smart_truncate_ja(text: str, limit: int = 600) -> str:
     return cut
 
 
-FEEDBACK_FILE = "feedback_log.csv"
+FEEDBACK_FILE = "feedback_log.csv"  # chỉ dùng làm fallback khi Google Sheet lỗi/chưa cấu hình
+FEEDBACK_RECIPIENT_EMAIL = "han301293@gmail.com"  # dùng để tự động chia sẻ quyền xem Sheet, xem hướng dẫn secrets bên dưới
+
+_GSHEET_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.readonly",
+]
 
 
-def save_feedback(name: str, fb_type: str, content: str) -> None:
+@st.cache_resource(show_spinner=False)
+def _get_feedback_worksheet():
+    """
+    Kết nối tới Google Sheet chứa feedback bằng service account (an toàn hơn
+    App Password vì quyền chỉ giới hạn trong đúng 1 file Sheet được chia sẻ).
+    Yêu cầu trong .streamlit/secrets.toml (hoặc Secrets trên Streamlit Cloud):
+      FEEDBACK_SHEET_ID = "id-cua-google-sheet"   # lấy từ URL của sheet
+      GCP_SERVICE_ACCOUNT_JSON = \'\'\'
+      ...dán NGUYÊN VĂN toàn bộ nội dung file JSON service account vào đây...
+      \'\'\'
+    Sheet phải được share (quyền Editor) cho email của service account
+    (dạng ...@...iam.gserviceaccount.com, xem hướng dẫn setup).
+    """
+    creds_info = json.loads(st.secrets["GCP_SERVICE_ACCOUNT_JSON"])
+    sheet_id = st.secrets["FEEDBACK_SHEET_ID"]
+    creds = Credentials.from_service_account_info(creds_info, scopes=_GSHEET_SCOPES)
+    client = gspread.authorize(creds)
+    ws = client.open_by_key(sheet_id).sheet1
+    if not ws.get_all_values():
+        ws.append_row(["timestamp", "name", "type", "content"])
+    return ws
+
+
+def _save_feedback_local_fallback(row: list) -> None:
     file_exists = os.path.isfile(FEEDBACK_FILE)
     with open(FEEDBACK_FILE, "a", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f)
         if not file_exists:
             writer.writerow(["timestamp", "name", "type", "content"])
-        writer.writerow([datetime.datetime.now().isoformat(timespec="seconds"), name, fb_type, content])
+        writer.writerow(row)
+
+
+def save_feedback(name: str, fb_type: str, content: str) -> None:
+    row = [datetime.datetime.now().isoformat(timespec="seconds"), name or "(ẩn danh)", fb_type, content]
+    try:
+        ws = _get_feedback_worksheet()
+        ws.append_row(row, value_input_option="USER_ENTERED")
+    except Exception:
+        # Không để mất feedback nếu Google Sheet chưa cấu hình xong / tạm lỗi mạng
+        _save_feedback_local_fallback(row)
+        raise
 
 
 if analyze_btn:
@@ -410,14 +541,25 @@ if st.session_state.analysis_data:
     # Tab 1: Đọc & Dịch
     with tab_read:
         st.markdown("#### 🎧 Luyện nghe bài đọc (Giọng AI chuẩn Nhật):")
-        aud_col, spd_col = st.columns([3.5, 1.5])
+        # FIX #10 (UI): trước đây selectbox có label riêng ("⚡ Tốc độ phát:")
+        # nằm TRÊN nó, còn audio thì không có label -> 2 cột bị lệch hàng
+        # (đúng phần bạn khoanh đỏ trong ảnh 3). Ẩn label mặc định của
+        # selectbox (label_visibility="collapsed"), thay bằng 1 caption
+        # ngắn đặt cạnh nó, và dùng vertical_alignment="center" để 2 cột
+        # luôn canh giữa theo chiều cao của nhau.
+        aud_col, spd_col = st.columns([3.5, 1.5], vertical_alignment="center")
         with spd_col:
-            speed_val = st.selectbox(
-                "⚡ Tốc độ phát:",
-                [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
-                index=2,
-                format_func=lambda x: f"x{x}"
-            )
+            spd_label_col, spd_input_col = st.columns([1, 1.4], vertical_alignment="center")
+            with spd_label_col:
+                st.markdown("⚡ **Tốc độ:**")
+            with spd_input_col:
+                speed_val = st.selectbox(
+                    "Tốc độ phát",
+                    [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+                    index=2,
+                    format_func=lambda x: f"x{x}",
+                    label_visibility="collapsed"
+                )
 
         with aud_col:
             if st.session_state.raw_audio_b64:
@@ -447,11 +589,14 @@ if st.session_state.analysis_data:
         with ctrl_col2:
             show_translation = st.toggle("🇻🇳 Hiển thị bản dịch tiếng Việt", value=True)
 
+        vocab_index = build_vocab_tooltip_index(data.get("vocabulary_list", []))
+
         for p in data.get("paragraphs", []):
             if furigana_mode == "Hiện toàn bộ Furigana":
                 jp_content = sanitize_furigana_html(p.get('furigana_html', p.get('original_text', '')))
             else:
                 jp_content = html_lib.escape(p.get('original_text', ''))
+            jp_content = wrap_vocab_tooltips(jp_content, vocab_index)
 
             trans_html = ""
             if show_translation and p.get('vietnamese_translation'):
@@ -504,11 +649,23 @@ if st.session_state.analysis_data:
 
     # Tab 4: Kanji
     with tab_kanji:
-        kanji_rows = [
-            {"Chữ Hán": k.get("kanji"), "Hán Việt": k.get("han_viet"), "Cấp độ": k.get("jlpt_level"), "Âm On": k.get("onyomi"), "Âm Kun": k.get("kunyomi"), "Ý nghĩa": k.get("meaning")}
-            for k in data.get("kanji_list", [])
-        ]
-        st.dataframe(kanji_rows, use_container_width=True)
+        kanji_list = data.get("kanji_list", [])
+        if not kanji_list:
+            st.info("💡 Không có dữ liệu Hán tự cho bài đọc này.")
+        for k in kanji_list:
+            header = f"{k.get('kanji', '')}　·　{k.get('han_viet', '')}　[{k.get('jlpt_level', 'N/A')}]　—　{k.get('meaning', '')}"
+            with st.expander(header):
+                col_on, col_kun = st.columns(2)
+                col_on.markdown(f"**Âm On:** {k.get('onyomi') or '—'}")
+                col_kun.markdown(f"**Âm Kun:** {k.get('kunyomi') or '—'}")
+
+                examples = k.get("example_words", [])
+                if examples:
+                    st.markdown("**📚 Từ vựng ví dụ mở rộng:**")
+                    for ex in examples:
+                        st.markdown(f"- **{ex.get('word', '')}** [{ex.get('reading', '')}] — {ex.get('meaning', '')}")
+                else:
+                    st.caption("Chưa có ví dụ từ vựng cho Hán tự này.")
 
     # Tab 5: Câu hỏi JLPT
     with tab_quiz:
@@ -583,8 +740,11 @@ with st.expander("💌 Góp ý & Phản hồi phát triển trang web"):
                 # -> nếu cần lưu lâu dài, nên đổi sang Google Sheet/DB/email/webhook.
                 try:
                     save_feedback(fb_name, fb_type, fb_content)
-                    st.success("🌸 Cảm ơn bạn! Góp ý đã được ghi nhận.")
+                    st.success("🌸 Cảm ơn bạn! Góp ý đã được ghi vào Google Sheet.")
                 except Exception:
-                    st.warning("Có lỗi khi lưu góp ý, nhưng cảm ơn phản hồi của bạn!")
+                    st.warning(
+                        "⚠️ Chưa gửi được lên Google Sheet (có thể do chưa cấu hình secrets/"
+                        "chia sẻ quyền Sheet). Góp ý đã được lưu tạm cục bộ, cảm ơn bạn!"
+                    )
             else:
                 st.warning("⚠️ Vui lòng nhập nội dung trước khi gửi.")
