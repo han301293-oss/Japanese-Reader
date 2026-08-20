@@ -145,40 +145,6 @@ st.markdown("""
         }
     }
 
-    /* Tooltip cho từ vựng: hover/chạm vào từ trong bài đọc để xem nghĩa */
-    .jp-vocab-word {
-        position: relative;
-        border-bottom: 2px dotted #e91e63;
-        cursor: help;
-    }
-    .jp-vocab-word:hover::after,
-    .jp-vocab-word:focus::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        left: 50%;
-        bottom: 130%;
-        transform: translateX(-50%);
-        background: #2c2c2c;
-        color: #fff;
-        padding: 6px 10px;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        white-space: nowrap;
-        z-index: 1000;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-    }
-    .jp-vocab-word:hover::before,
-    .jp-vocab-word:focus::before {
-        content: "";
-        position: absolute;
-        left: 50%;
-        bottom: 118%;
-        transform: translateX(-50%);
-        border: 5px solid transparent;
-        border-top-color: #2c2c2c;
-        z-index: 1000;
-    }
-
     .sakura-container {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -251,12 +217,19 @@ if "analysis_id" not in st.session_state:
 col_left, col_right = st.columns([6.8, 3.2], gap="medium")
 
 with col_left:
-    user_text = st.text_area(
-        "📋 Dán bài đọc tiếng Nhật vào đây:",
-        height=220,
-        placeholder="Dán bài báo, truyện ngắn hoặc đoạn văn tiếng Nhật vào đây..."
-    )
-    analyze_btn = st.button("🚀 Bắt đầu Phân tích & Tạo bài học", type="primary", use_container_width=True)
+    # FIX #11 (UI): trước đây khung này (textarea + nút) chỉ cao ~280px,
+    # trong khi khung bên phải cao 430px (do container(height=430) ở dưới)
+    # -> lệch chiều cao rõ rệt như ảnh bạn khoanh đỏ. Bọc trong cùng loại
+    # st.container(border=True, height=430) và tăng chiều cao textarea để
+    # 2 khung cân đối, đồng thời có viền giống nhau cho thống nhất giao diện.
+    with st.container(border=True, height=430):
+        user_text = st.text_area(
+            "📋 Dán bài đọc tiếng Nhật vào đây:",
+            height=300,
+            placeholder="Dán bài báo, truyện ngắn hoặc đoạn văn tiếng Nhật vào đây...",
+            label_visibility="visible"
+        )
+        analyze_btn = st.button("🚀 Bắt đầu Phân tích & Tạo bài học", type="primary", use_container_width=True)
 
 with col_right:
     # FIX #8 (UI): trước đây mở thẻ <div class="resource-box"> bằng MỘT
@@ -337,9 +310,128 @@ Bạn là giáo viên tiếng Nhật JLPT cao cấp. Hãy phân tích bài đọ
 }
 YÊU CẦU VỀ ĐỘ ĐẦY ĐỦ:
 - "vocabulary_list": liệt kê ĐẦY ĐỦ các từ vựng đáng chú ý trong bài (ưu tiên từ N3 trở lên, và mọi từ ít gặp/khó với người học), không giới hạn số lượng tối đa, không bỏ sót từ chỉ vì bài dài.
-- "kanji_list": liệt kê TẤT CẢ Hán tự xuất hiện trong bài (không lặp lại Hán tự đã liệt kê). Với MỖI Hán tự, bổ sung 2-3 từ vựng ví dụ thường gặp có chứa Hán tự đó (không nhất thiết phải xuất hiện trong bài đọc) kèm cách đọc và nghĩa tiếng Việt, để người học mở rộng vốn từ ngoài phạm vi bài đọc.
+- "kanji_list": liệt kê TẤT CẢ Hán tự xuất hiện trong bài (không lặp lại Hán tự đã liệt kê). Với MỖI Hán tự, bổ sung 2-3 từ vựng ví dụ THẬT SỰ TỒN TẠI trong tiếng Nhật có chứa Hán tự đó — được phép ghép với BẤT KỲ Hán tự nào khác mà bạn biết là tạo thành từ có nghĩa (hoàn toàn KHÔNG giới hạn hay ưu tiên trong phạm vi các Hán tự xuất hiện ở bài đọc này), miễn là đó là từ vựng có thật, thường gặp, kèm cách đọc và nghĩa tiếng Việt chính xác. TUYỆT ĐỐI không bịa ra tổ hợp không tồn tại.
 Chỉ tạo 3 đến 5 câu hỏi trắc nghiệm hay nhất, mỗi câu phải có "question_number" DUY NHẤT không trùng lặp (1, 2, 3...). Đảm bảo JSON hợp lệ, không chứa ký tự xuống dòng chưa escape.
 """
+
+# FIX #13: trước đây chỉ DẶN trong SYSTEM_PROMPT là mỗi Hán tự phải có
+# "example_words", nhưng lời dặn suông trong prompt không được Gemini
+# tuân thủ tuyệt đối -> đây là lý do tab Hán tự hay hiện "Chưa có ví dụ
+# từ vựng". Cách sửa đúng gốc: khai báo response_schema (kiểu OpenAPI)
+# cho Gemini API — lúc này "example_words" trở thành field BẮT BUỘC với
+# tối thiểu 2 phần tử, model không thể trả thiếu được nữa.
+RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {
+            "type": "object",
+            "properties": {
+                "estimated_jlpt_level": {"type": "string"},
+                "topic": {"type": "string"},
+                "word_count": {"type": "integer"},
+            },
+            "required": ["estimated_jlpt_level", "topic"],
+        },
+        "paragraphs": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "original_text": {"type": "string"},
+                    "furigana_html": {"type": "string"},
+                    "vietnamese_translation": {"type": "string"},
+                },
+                "required": ["original_text", "furigana_html", "vietnamese_translation"],
+            },
+        },
+        "grammar_analysis": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string"},
+                    "jlpt_level": {"type": "string"},
+                    "meaning": {"type": "string"},
+                    "usage_in_text": {"type": "string"},
+                    "explanation": {"type": "string"},
+                },
+                "required": ["pattern", "jlpt_level", "meaning", "usage_in_text", "explanation"],
+            },
+        },
+        "vocabulary_list": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "word": {"type": "string"},
+                    "reading": {"type": "string"},
+                    "part_of_speech": {"type": "string"},
+                    "jlpt_level": {"type": "string"},
+                    "vietnamese_meaning": {"type": "string"},
+                },
+                "required": ["word", "reading", "part_of_speech", "jlpt_level", "vietnamese_meaning"],
+            },
+        },
+        "kanji_list": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "kanji": {"type": "string"},
+                    "han_viet": {"type": "string"},
+                    "jlpt_level": {"type": "string"},
+                    "onyomi": {"type": "string"},
+                    "kunyomi": {"type": "string"},
+                    "meaning": {"type": "string"},
+                    "example_words": {
+                        "type": "array",
+                        "minItems": 2,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "word": {"type": "string"},
+                                "reading": {"type": "string"},
+                                "meaning": {"type": "string"},
+                            },
+                            "required": ["word", "reading", "meaning"],
+                        },
+                    },
+                },
+                "required": ["kanji", "han_viet", "jlpt_level", "onyomi", "kunyomi", "meaning", "example_words"],
+            },
+        },
+        "jlpt_practice_questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "question_number": {"type": "integer"},
+                    "question_text": {"type": "string"},
+                    "question_vietnamese": {"type": "string"},
+                    "options": {
+                        "type": "object",
+                        "properties": {
+                            "A": {"type": "string"}, "B": {"type": "string"},
+                            "C": {"type": "string"}, "D": {"type": "string"},
+                        },
+                        "required": ["A", "B", "C", "D"],
+                    },
+                    "correct_answer": {"type": "string"},
+                    "option_analysis": {
+                        "type": "object",
+                        "properties": {
+                            "A": {"type": "string"}, "B": {"type": "string"},
+                            "C": {"type": "string"}, "D": {"type": "string"},
+                        },
+                        "required": ["A", "B", "C", "D"],
+                    },
+                },
+                "required": ["question_number", "question_text", "question_vietnamese", "options", "correct_answer", "option_analysis"],
+            },
+        },
+    },
+    "required": ["summary", "paragraphs", "grammar_analysis", "vocabulary_list", "kanji_list", "jlpt_practice_questions"],
+}
 
 
 def clean_and_parse_json(raw_text):
@@ -383,31 +475,99 @@ def build_vocab_tooltip_index(vocabulary_list: list) -> dict:
     return idx
 
 
-def wrap_vocab_tooltips(html_or_text: str, vocab_index: dict) -> str:
-    if not html_or_text or not vocab_index:
-        return html_or_text
-    words_sorted = sorted(vocab_index.keys(), key=len, reverse=True)
-    pattern = re.compile('|'.join(re.escape(w) for w in words_sorted))
+# FIX #12 (UI): trước đây MỌI từ vựng khớp đều bị gạch chân dotted sẵn
+# trong bài đọc (gây rối mắt). Đổi sang mô hình "bôi đen từ nào, hiện
+# nghĩa từ đó" — không gạch chân gì cả, người học tự chọn (drag/chạm) đúng
+# từ mình muốn tra, tooltip nổi lên ngay tại vị trí bôi đen. Vì cần bắt
+# sự kiện chọn văn bản (mouseup/touchend) bằng JavaScript thực thi được,
+# phải dùng st.components.v1.html (iframe) thay vì st.markdown (script
+# trong st.markdown không được trình duyệt thực thi).
+def build_reader_component_html(cards_html: list, vocab_index: dict) -> str:
+    vocab_payload = {
+        w: {
+            "word": w,
+            "reading": info.get("reading", ""),
+            "pos": info.get("part_of_speech", ""),
+            "meaning": info.get("vietnamese_meaning", ""),
+        }
+        for w, info in (vocab_index or {}).items()
+    }
+    # Escape "</" để JSON không bị "vỡ" ra khỏi thẻ <script> khi nhúng.
+    vocab_json = json.dumps(vocab_payload, ensure_ascii=False).replace("</", "<\\/")
+    cards_joined = "\n".join(cards_html)
 
-    def _sub(m):
-        w = m.group(0)
-        info = vocab_index[w]
-        reading = html_lib.escape(info.get("reading", ""))
-        pos = html_lib.escape(info.get("part_of_speech", ""))
-        meaning = html_lib.escape(info.get("vietnamese_meaning", ""))
-        tooltip = f"{reading} · {pos} · {meaning}".strip(" ·")
-        return f'<span class="jp-vocab-word" data-tooltip="{tooltip}" tabindex="0">{w}</span>'
+    return f"""
+    <style>
+        body {{ margin: 0; font-family: 'Noto Sans JP', sans-serif; -webkit-tap-highlight-color: transparent; }}
+        #jp-reader-scroll {{ max-height: 640px; overflow-y: auto; padding: 4px 10px 4px 4px; }}
+        .reader-paragraph-card {{
+            background-color: #ffffff; padding: 20px 24px; border-radius: 12px;
+            border: 1px solid #f0eae1; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 20px;
+        }}
+        .jp-text-line {{ font-size: 1.3rem; line-height: 2.8rem; color: #2c3e50; letter-spacing: 0.04em; }}
+        ruby {{ ruby-position: over; }}
+        rt {{ font-size: 0.58em; color: #e91e63; font-weight: 600; user-select: none; }}
+        .vi-translation-box {{
+            background: rgba(255, 243, 224, 0.85); border-left: 4px solid #ff9800; padding: 10px 16px;
+            border-radius: 0 8px 8px 0; margin-top: 14px; font-size: 1.05rem; font-weight: 500;
+            color: #d84315; line-height: 1.6rem;
+        }}
+        #jp-sel-tooltip {{
+            position: fixed; display: none; background: #2c2c2c; color: #fff; padding: 8px 12px;
+            border-radius: 8px; font-size: 0.9rem; max-width: 280px; z-index: 999999; line-height: 1.5;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+        }}
+        #jp-sel-tooltip b {{ color: #ff80ab; }}
+        #jp-sel-tooltip .jp-sel-empty {{ color: #ccc; font-style: italic; }}
+    </style>
+    <div id="jp-reader-scroll">{cards_joined}</div>
+    <div id="jp-sel-tooltip"></div>
+    <script>
+        const VOCAB = {vocab_json};
+        const tooltip = document.getElementById('jp-sel-tooltip');
 
-    # Chỉ áp dụng lên các đoạn text NẰM NGOÀI thẻ HTML có sẵn (nếu có),
-    # giữ nguyên các thẻ <ruby>, <rt>... không đụng vào bên trong chúng.
-    segments = re.split(r'(<[^>]+>)', html_or_text)
-    out = []
-    for seg in segments:
-        if seg.startswith('<') and seg.endswith('>'):
-            out.append(seg)
-        else:
-            out.append(pattern.sub(_sub, seg))
-    return ''.join(out)
+        function findEntry(text) {{
+            if (!text) return null;
+            if (VOCAB[text]) return VOCAB[text];
+            let best = null;
+            for (const key in VOCAB) {{
+                if (text.indexOf(key) !== -1 && (!best || key.length > best.length)) best = key;
+            }}
+            return best ? VOCAB[best] : null;
+        }}
+
+        function showTooltip(rect, entry, rawText) {{
+            if (entry) {{
+                tooltip.innerHTML = '<b>' + entry.word + '</b>' +
+                    (entry.reading ? ' [' + entry.reading + ']' : '') + '<br>' +
+                    (entry.pos ? entry.pos + ' · ' : '') + (entry.meaning || '');
+            }} else {{
+                tooltip.innerHTML = '<b>' + rawText + '</b><br><span class="jp-sel-empty">Không có trong danh sách từ vựng của bài</span>';
+            }}
+            const top = Math.max(8, rect.top - 8);
+            const left = Math.min(Math.max(8, rect.left + rect.width / 2 - 120), window.innerWidth - 250);
+            tooltip.style.top = top + 'px';
+            tooltip.style.left = left + 'px';
+            tooltip.style.transform = 'translateY(-100%)';
+            tooltip.style.display = 'block';
+        }}
+
+        function handleSelection() {{
+            const sel = window.getSelection();
+            const text = sel ? sel.toString().trim() : '';
+            if (!text || sel.rangeCount === 0) {{ tooltip.style.display = 'none'; return; }}
+            const rect = sel.getRangeAt(0).getBoundingClientRect();
+            if (!rect || (rect.width === 0 && rect.height === 0)) {{ tooltip.style.display = 'none'; return; }}
+            showTooltip(rect, findEntry(text), text);
+        }}
+
+        document.addEventListener('mouseup', handleSelection);
+        document.addEventListener('touchend', handleSelection);
+        document.addEventListener('mousedown', function(e) {{
+            if (e.target !== tooltip) tooltip.style.display = 'none';
+        }});
+    </script>
+    """
 
 
 # FIX #5: cắt văn bản cho TTS tại ranh giới câu tiếng Nhật gần nhất
@@ -493,6 +653,7 @@ if analyze_btn:
                     model_name="gemini-flash-latest",
                     generation_config={
                         "response_mime_type": "application/json",
+                        "response_schema": RESPONSE_SCHEMA,
                         "temperature": 0.2
                     }
                 )
@@ -591,25 +752,31 @@ if st.session_state.analysis_data:
 
         vocab_index = build_vocab_tooltip_index(data.get("vocabulary_list", []))
 
+        cards_html = []
         for p in data.get("paragraphs", []):
             if furigana_mode == "Hiện toàn bộ Furigana":
                 jp_content = sanitize_furigana_html(p.get('furigana_html', p.get('original_text', '')))
             else:
                 jp_content = html_lib.escape(p.get('original_text', ''))
-            jp_content = wrap_vocab_tooltips(jp_content, vocab_index)
 
             trans_html = ""
             if show_translation and p.get('vietnamese_translation'):
                 trans_text = html_lib.escape(p.get('vietnamese_translation'))
                 trans_html = f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch:</strong> {trans_text}</div>"
 
-            full_card_html = f"""
+            cards_html.append(f"""
             <div class="reader-paragraph-card">
                 <div class="jp-text-line">{jp_content}</div>
                 {trans_html}
             </div>
-            """
-            st.markdown(full_card_html, unsafe_allow_html=True)
+            """)
+
+        st.caption("🖱️ Bôi đen (hoặc chạm giữ trên điện thoại) vào một từ trong bài để xem nghĩa của từ đó.")
+        st.components.v1.html(
+            build_reader_component_html(cards_html, vocab_index),
+            height=660,
+            scrolling=False
+        )
 
     # Tab 2: Ngữ pháp
     with tab_grammar:
@@ -664,6 +831,17 @@ if st.session_state.analysis_data:
                     st.markdown("**📚 Từ vựng ví dụ mở rộng:**")
                     for ex in examples:
                         st.markdown(f"- **{ex.get('word', '')}** [{ex.get('reading', '')}] — {ex.get('meaning', '')}")
+                elif k.get("meaning"):
+                    # FIX #13 (tiếp) - lưới an toàn: nếu vì lý do gì đó AI vẫn
+                    # thiếu example_words (vd. dữ liệu phân tích cũ trước khi
+                    # có response_schema), dùng tạm chính nghĩa của Hán tự đó
+                    # làm ví dụ 1-chữ, thay vì để trống. KHÔNG tự ghép Hán tự
+                    # này với Hán tự khác trong bài để "đoán" ra từ mới — vì
+                    # không có cách nào kiểm chứng đó có phải từ thật trong
+                    # tiếng Nhật hay không, dễ dạy sai cho người học.
+                    st.markdown("**📚 Từ vựng ví dụ:**")
+                    st.markdown(f"- **{k.get('kanji', '')}** [{k.get('onyomi') or k.get('kunyomi') or ''}] — {k.get('meaning')} *(dùng độc lập)*")
+                    st.caption("💡 Bài phân tích này chưa có ví dụ mở rộng đầy đủ — phân tích lại bài đọc để có danh sách ví dụ phong phú hơn.")
                 else:
                     st.caption("Chưa có ví dụ từ vựng cho Hán tự này.")
 
