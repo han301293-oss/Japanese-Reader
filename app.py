@@ -19,12 +19,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Cấu hình CSS tùy biến: Nâng cấp Typography chuẩn Nhật Bản & hiệu ứng giao diện
+# Cấu hình CSS tùy biến: Nâng cấp Typography chuẩn Nhật Bản & tối ưu giao diện
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
 
-    /* Thanh công cụ và Header của Streamlit */
     header[data-testid="stHeader"] {
         background: linear-gradient(135deg, rgba(255, 240, 245, 0.95), rgba(255, 228, 238, 0.95)) !important;
         border-bottom: 1px solid #ffd1dc !important;
@@ -40,7 +39,6 @@ st.markdown("""
         }
     }
 
-    /* Tiêu đề cố định trên cùng dải Header */
     .app-title-fixed {
         position: fixed;
         top: 6px;
@@ -65,33 +63,40 @@ st.markdown("""
         .app-sub-title { color: #bbb !important; }
     }
 
-    /* Đệm trang */
     .block-container {
         padding-top: 4.5rem !important;
         padding-bottom: 3rem !important;
     }
 
-    /* Khung đọc chuyên dụng (Reader Container) */
-    .reader-box {
-        font-family: 'Noto Sans JP', sans-serif;
-        font-size: 1.25rem;
-        line-height: 2.7rem;
-        color: #2c3e50;
-        background-color: #fdfbf7;
-        padding: 24px;
+    /* Khung từng đoạn đọc hoàn chỉnh */
+    .reader-paragraph-card {
+        background-color: #ffffff;
+        padding: 20px 24px;
         border-radius: 12px;
-        border: 1px solid #ede8df;
-        margin-bottom: 15px;
+        border: 1px solid #f0eae1;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        margin-bottom: 20px;
     }
     @media (prefers-color-scheme: dark) {
-        .reader-box {
+        .reader-paragraph-card {
             background-color: #231d24;
             border-color: #4a3443;
+        }
+    }
+
+    .jp-text-line {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 1.3rem;
+        line-height: 2.8rem;
+        color: #2c3e50;
+        letter-spacing: 0.04em;
+    }
+    @media (prefers-color-scheme: dark) {
+        .jp-text-line {
             color: #f1e7ea;
         }
     }
 
-    /* Tinh chỉnh thẻ Furigana */
     ruby {
         ruby-position: over;
         font-family: 'Noto Sans JP', sans-serif;
@@ -103,16 +108,16 @@ st.markdown("""
         user-select: none;
     }
 
-    /* Khối dịch tiếng Việt */
     .vi-translation-box {
         background: rgba(255, 243, 224, 0.85);
         border-left: 4px solid #ff9800;
         padding: 10px 16px;
         border-radius: 0 8px 8px 0;
-        margin-top: 10px;
+        margin-top: 14px;
         font-size: 1.05rem;
         font-weight: 500;
         color: #d84315;
+        line-height: 1.6rem;
     }
     @media (prefers-color-scheme: dark) {
         .vi-translation-box {
@@ -122,13 +127,11 @@ st.markdown("""
         }
     }
 
-    /* Hộp liên kết nguồn đọc */
     .resource-box {
         background-color: #f8f9fa;
         border-radius: 10px;
         padding: 16px;
         border: 1px solid #e9ecef;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
     }
     @media (prefers-color-scheme: dark) {
         .resource-box {
@@ -137,7 +140,6 @@ st.markdown("""
         }
     }
 
-    /* Hiệu ứng cánh hoa anh đào rơi */
     .sakura-container {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -161,41 +163,26 @@ st.markdown("""
     .petal:nth-child(7) { left: 85%; width: 12px; height: 14px; animation-duration: 11.5s, 3s; animation-delay: 1s; }
     .petal:nth-child(8) { left: 95%; width: 14px; height: 16px; animation-duration: 8.5s, 2.8s; animation-delay: 2.5s; }
 
-    @keyframes fall {
-        0% { top: -20px; transform: rotate(0deg); }
-        100% { top: 100vh; transform: rotate(360deg); }
-    }
-    @keyframes sway {
-        0% { transform: translateX(0px) rotate(0deg); }
-        100% { transform: translateX(35px) rotate(45deg); }
-    }
+    @keyframes fall { 0% { top: -20px; transform: rotate(0deg); } 100% { top: 100vh; transform: rotate(360deg); } }
+    @keyframes sway { 0% { transform: translateX(0px) rotate(0deg); } 100% { transform: translateX(35px) rotate(45deg); } }
 </style>
 
-<!-- Hiệu ứng cánh hoa anh đào rơi -->
 <div class="sakura-container">
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
+    <div class="petal"></div><div class="petal"></div><div class="petal"></div><div class="petal"></div>
+    <div class="petal"></div><div class="petal"></div><div class="petal"></div><div class="petal"></div>
 </div>
 
-<!-- Tiêu đề cố định trên thanh Header -->
 <div class="app-title-fixed">
     <div class="app-main-title">🌸 Japanese Reader Pro</div>
     <div class="app-sub-title">Luyện đọc hiểu thông minh • Tra cứu Furigana • Phân tích ngữ pháp & Tạo đề JLPT</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Lấy API Key từ Secrets hoặc Sidebar
+# Lấy API Key
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 if not api_key:
-    api_key = st.sidebar.text_input("🔑 Nhập Gemini API Key của bạn:", type="password")
+    api_key = st.sidebar.text_input("🔑 Nhập Gemini API Key:", type="password")
 
-# Khởi tạo session_state
 if "analysis_data" not in st.session_state:
     st.session_state.analysis_data = None
 if "current_user_text" not in st.session_state:
@@ -203,88 +190,81 @@ if "current_user_text" not in st.session_state:
 if "raw_audio_b64" not in st.session_state:
     st.session_state.raw_audio_b64 = None
 
-# BỐ CỤC 2 CỘT: Cột trái nhập văn bản | Cột phải kho nguồn tài liệu đọc tiếng Nhật
+# Giao diện 2 cột
 col_left, col_right = st.columns([6.8, 3.2], gap="medium")
 
 with col_left:
     user_text = st.text_area(
         "📋 Dán bài đọc tiếng Nhật vào đây:",
-        height=230,
-        placeholder="Sao chép bất kỳ bài báo, truyện ngắn hoặc bài thi tiếng Nhật nào và dán vào đây để phân tích..."
+        height=220,
+        placeholder="Dán bài báo, truyện ngắn hoặc đoạn văn tiếng Nhật vào đây..."
     )
     analyze_btn = st.button("🚀 Bắt đầu Phân tích & Tạo bài học", type="primary", use_container_width=True)
 
 with col_right:
     st.markdown('<div class="resource-box">', unsafe_allow_html=True)
     st.markdown("#### 🌐 Nguồn bài đọc tiếng Nhật uy tín")
-    st.caption("Truy cập các trang báo/truyện chuẩn theo trình độ, copy bài viết và dán sang ô bên trái:")
+    st.caption("Copy bài viết từ các trang sau và dán sang ô bên trái:")
 
     with st.expander("🟢 Sơ cấp (N5 - N4)", expanded=True):
         st.markdown("""
-        * 📰 [NHK News Web Easy](https://www3.nhk.or.jp/news/easy/): Tin tức tiếng Nhật đơn giản có sẵn Furigana.
-        * 📖 [Tadoku Graded Readers](https://tadoku.org/japanese/free-books/): Thư viện truyện tranh và sách đọc theo cấp độ miễn phí.
-        * 🧒 [Hukumusume Fairy Tales](http://hukumusume.com/douwa/): Kho truyện cổ tích thiếu nhi Nhật Bản kèm tranh vẽ.
+        * 📰 [NHK News Easy](https://www3.nhk.or.jp/news/easy/): Tin tức tiếng Nhật đơn giản có Furigana.
+        * 📖 [Tadoku Graded Readers](https://tadoku.org/japanese/free-books/): Sách truyện ngắn chia theo cấp độ.
+        * 🧒 [Hukumusume Fairy Tales](http://hukumusume.com/douwa/): Truyện cổ tích thiếu nhi Nhật Bản.
         """)
 
     with st.expander("🟡 Trung cấp (N3 - N2)"):
         st.markdown("""
-        * 📰 [Watanoc](http://watanoc.com/): Tạp chí văn hóa & đời sống Nhật viết bằng tiếng Nhật dễ hiểu (N4-N3).
-        * 📰 [Mainichi Shimbun (Tiểu học)](https://mainichi.jp/maisho/): Báo học sinh Nhật, ngữ cảnh thực tế, từ vựng phong phú.
-        * 📝 [Note.com (Nhật ký/Blog)](https://note.com/): Nơi người Nhật chia sẻ quan điểm cá nhân và tản văn ngắn.
+        * 📰 [Watanoc](http://watanoc.com/): Tạp chí văn hóa viết bằng tiếng Nhật dễ hiểu.
+        * 📰 [Mainichi Shimbun (Thiếu nhi)](https://mainichi.jp/maisho/): Báo học sinh Nhật Bản.
+        * 📝 [Note.com](https://note.com/): Blog và tản văn của người bản xứ.
         """)
 
     with st.expander("🔴 Cao cấp (N1 & Báo chí thực tế)"):
         st.markdown("""
-        * 🗞️ [Asahi Shimbun (朝日新聞)](https://www.asahi.com/): Xã luận & bài phân tích chính trị - kinh tế chuyên sâu.
-        * 🗞️ [Yahoo Japan News](https://news.yahoo.co.jp/): Điểm tin thời sự và bình luận xã hội thực tế nóng hổi.
-        * 📚 [Aozora Bunko (青空文庫)](https://www.aozora.gr.jp/): Kho tàng văn học kinh điển Nhật Bản hoàn toàn miễn phí.
+        * 🗞️ [Asahi Shimbun (朝日新聞)](https://www.asahi.com/): Báo xã luận chính luận chuyên sâu.
+        * 🗞️ [Yahoo Japan News](https://news.yahoo.co.jp/): Tin tức đời sống nóng hổi.
+        * 📚 [Aozora Bunko (青空文庫)](https://www.aozora.gr.jp/): Kho văn học cổ điển Nhật Bản.
         """)
     st.markdown('</div>', unsafe_allow_html=True)
 
 SYSTEM_PROMPT = """
-Bạn là một chuyên gia ngôn ngữ học và giáo viên luyện thi tiếng Nhật JLPT cao cấp.
-Nhiệm vụ của bạn là tiếp nhận văn bản tiếng Nhật do người dùng cung cấp, phân tích chuyên sâu và trả về kết quả DUY NHẤT dưới định dạng JSON theo schema sau (không thêm bất kỳ lời dẫn nào ngoài JSON).
-LƯU Ý: Phải tạo CHÍNH XÁC ĐỦ 5 CÂU HỎI trắc nghiệm đọc hiểu (question_number từ 1 đến 5). Tuyệt đối không để ký tự xuống dòng chưa escape trong chuỗi JSON.
+Bạn là giáo viên tiếng Nhật JLPT cao cấp. Hãy phân tích bài đọc tiếng Nhật và trả về kết quả định dạng JSON thuần túy (không bọc markdown, không thêm chữ thừa) theo cấu trúc sau:
 {
-  "summary": { "estimated_jlpt_level": "N3", "topic": "Chủ đề bài đọc", "word_count": 185 },
+  "summary": { "estimated_jlpt_level": "N3", "topic": "Tên chủ đề", "word_count": 120 },
   "paragraphs": [
     {
-      "paragraph_id": 1,
-      "original_text": "văn bản gốc không kèm furigana",
-      "furigana_html": "văn bản có thẻ <ruby>Chữ Hán<rt>furigana</rt></ruby>",
-      "vietnamese_translation": "bản dịch tiếng Việt tự nhiên và chuẩn xác"
+      "original_text": "văn bản gốc",
+      "furigana_html": "văn bản có thẻ <ruby>Hán tự<rt>cách đọc</rt></ruby>",
+      "vietnamese_translation": "dịch nghĩa tiếng Việt súc tích"
     }
   ],
   "grammar_analysis": [
-    { "pattern": "mẫu ngữ pháp", "jlpt_level": "N3", "meaning": "ý nghĩa ngữ pháp", "usage_in_text": "câu xuất hiện trong bài", "explanation": "giải thích cách dùng chi tiết" }
+    { "pattern": "Mẫu ngữ pháp", "jlpt_level": "N3", "meaning": "Ý nghĩa", "usage_in_text": "Câu trong bài", "explanation": "Giải thích ngắn gọn" }
   ],
   "vocabulary_list": [
-    { "word": "từ vựng", "reading": "cách đọc", "part_of_speech": "từ loại", "jlpt_level": "N3", "vietnamese_meaning": "nghĩa tiếng Việt" }
+    { "word": "Từ", "reading": "Cách đọc", "part_of_speech": "Từ loại", "jlpt_level": "N3", "vietnamese_meaning": "Nghĩa" }
   ],
   "kanji_list": [
-    { "kanji": "hán tự", "han_viet": "ÂM HÁN", "jlpt_level": "N3", "onyomi": "On", "kunyomi": "Kun", "meaning": "nghĩa cơ bản" }
+    { "kanji": "Hán tự", "han_viet": "ÂM HÁN", "jlpt_level": "N3", "onyomi": "On", "kunyomi": "Kun", "meaning": "Nghĩa" }
   ],
   "jlpt_practice_questions": [
     {
       "question_number": 1,
-      "question_text": "câu hỏi tiếng Nhật mô phỏng đề thi JLPT",
-      "question_vietnamese": "dịch câu hỏi tiếng Việt",
-      "options": {
-        "A": "Lựa chọn A",
-        "B": "Lựa chọn B",
-        "C": "Lựa chọn C",
-        "D": "Lựa chọn D"
-      },
+      "question_text": "Câu hỏi JLPT bằng tiếng Nhật",
+      "question_vietnamese": "Dịch câu hỏi",
+      "options": { "A": "Lựa chọn A", "B": "Lựa chọn B", "C": "Lựa chọn C", "D": "Lựa chọn D" },
       "correct_answer": "A",
       "option_analysis": {
-        "A": "Giải thích ngắn gọn tại sao A ĐÚNG.",
-        "B": "Giải thích ngắn gọn tại sao B SAI.",
-        "C": "Giải thích ngắn gọn tại sao C SAI.",
-        "D": "Giải thích ngắn gọn tại sao D SAI."
+        "A": "Giải thích tại sao đúng",
+        "B": "Giải thích tại sao sai",
+        "C": "Giải thích tại sao sai",
+        "D": "Giải thích tại sao sai"
       }
     }
   ]
 }
+Chỉ tạo 3 đến 5 câu hỏi trắc nghiệm hay nhất. Đảm bảo JSON hợp lệ, không chứa ký tự xuống dòng chưa escape.
 """
 
 def clean_and_parse_json(raw_text):
@@ -304,55 +284,59 @@ def clean_and_parse_json(raw_text):
 
 if analyze_btn:
     if not api_key:
-        st.error("⚠️ Vui lòng cấu hình Gemini API Key (trong Secrets hoặc thanh menu bên trái) để tiếp tục.")
+        st.error("⚠️ Vui lòng cung cấp Gemini API Key để tiếp tục.")
     elif not user_text.strip():
-        st.warning("⚠️ Vui lòng dán nội dung bài đọc trước khi bấm phân tích.")
+        st.warning("⚠️ Vui lòng nhập nội dung bài đọc.")
     else:
-        with st.spinner("🌸 AI đang phân tích bài đọc, tạo dữ liệu ngữ pháp, từ vựng và 5 câu hỏi JLPT..."):
+        with st.status("🌸 Đang xử lý bài học...", expanded=True) as status:
             try:
+                st.write("🧠 AI đang phân tích ngữ pháp, từ vựng và câu hỏi...")
                 genai.configure(api_key=api_key)
-                # CẬP NHẬT MODEL CHÍNH XÁC: gemini-3.6-flash
+                
                 model = genai.GenerativeModel(
                     model_name="gemini-3.6-flash",
-                    generation_config={"response_mime_type": "application/json"}
+                    generation_config={
+                        "response_mime_type": "application/json",
+                        "temperature": 0.2
+                    }
                 )
-                response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
+                
+                response = model.generate_content(f"{SYSTEM_PROMPT}\n\nBài đọc:\n{user_text}")
                 st.session_state.analysis_data = clean_and_parse_json(response.text)
                 st.session_state.current_user_text = user_text
 
-                # Tạo âm thanh đọc AI và lưu dạng base64
+                st.write("🎙️ Đang tạo bản thu âm phát âm AI...")
                 if TTS_AVAILABLE:
                     try:
-                        tts = gTTS(text=user_text, lang='ja', slow=False)
+                        audio_text = user_text[:600]
+                        tts = gTTS(text=audio_text, lang='ja', slow=False)
                         fp = io.BytesIO()
                         tts.write_to_fp(fp)
                         fp.seek(0)
                         st.session_state.raw_audio_b64 = base64.b64encode(fp.read()).decode()
                     except Exception:
                         st.session_state.raw_audio_b64 = None
+                
+                status.update(label="🎉 Phân tích hoàn tất thành công!", state="complete", expanded=False)
 
             except Exception as e:
-                st.error(f"Đã xảy ra lỗi khi gọi AI: {str(e)}")
+                status.update(label="❌ Có lỗi xảy ra!", state="error", expanded=True)
+                st.error(f"Chi tiết lỗi: {str(e)}")
 
 # HIỂN THỊ KẾT QUẢ
 if st.session_state.analysis_data:
     data = st.session_state.analysis_data
-    
-    st.success("🎉 Đã phân tích bài đọc thành công!")
 
-    # Thông tin tổng quan
     sum_col1, sum_col2 = st.columns(2)
     sum_col1.info(f"🏷️ **Cấp độ ước tính:** {data.get('summary', {}).get('estimated_jlpt_level', 'N/A')}")
     sum_col2.info(f"📖 **Chủ đề:** {data.get('summary', {}).get('topic', 'Chung')}")
 
-    # Tabs chức năng
     tab_read, tab_grammar, tab_vocab, tab_kanji, tab_quiz = st.tabs([
-        "📖 Trình Đọc & Dịch", "📝 Ngữ pháp", "📚 Từ vựng & Flashcard", "🈲 Hán tự (Kanji)", "❓ 5 Câu hỏi JLPT"
+        "📖 Trình Đọc & Dịch", "📝 Ngữ pháp", "📚 Từ vựng & Flashcard", "🈲 Hán tự (Kanji)", "❓ Câu hỏi Luyện thi JLPT"
     ])
 
-    # Tab 1: Bài đọc & Dịch
+    # Tab 1: Đọc & Dịch (ĐÃ SỬA TRIỆT ĐỂ LỖI Ô TRỐNG DƯ THỪA)
     with tab_read:
-        # Thanh điều khiển phát Audio
         st.markdown("#### 🎧 Luyện nghe bài đọc (Giọng AI chuẩn Nhật):")
         aud_col, spd_col = st.columns([3.5, 1.5])
         with spd_col:
@@ -380,7 +364,6 @@ if st.session_state.analysis_data:
 
         st.markdown("---")
 
-        # Bảng điều khiển chế độ hiển thị
         ctrl_col1, ctrl_col2 = st.columns(2)
         with ctrl_col1:
             furigana_mode = st.radio(
@@ -391,17 +374,24 @@ if st.session_state.analysis_data:
         with ctrl_col2:
             show_translation = st.toggle("🇻🇳 Hiển thị bản dịch tiếng Việt", value=True)
 
-        # Hiển thị từng đoạn văn bản
+        # Render từng đoạn gói gọn trong 1 thẻ duy nhất (Không còn ô trống)
         for p in data.get("paragraphs", []):
-            st.markdown('<div class="reader-box">', unsafe_allow_html=True)
             if furigana_mode == "Hiện toàn bộ Furigana":
-                st.markdown(f"<div>{p.get('furigana_html')}</div>", unsafe_allow_html=True)
+                jp_content = p.get('furigana_html', p.get('original_text', ''))
             else:
-                st.markdown(f"<div>{p.get('original_text')}</div>", unsafe_allow_html=True)
+                jp_content = p.get('original_text', '')
 
-            if show_translation:
-                st.markdown(f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch:</strong> {p.get('vietnamese_translation')}</div>", unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            trans_html = ""
+            if show_translation and p.get('vietnamese_translation'):
+                trans_html = f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch:</strong> {p.get('vietnamese_translation')}</div>"
+
+            full_card_html = f"""
+            <div class="reader-paragraph-card">
+                <div class="jp-text-line">{jp_content}</div>
+                {trans_html}
+            </div>
+            """
+            st.markdown(full_card_html, unsafe_allow_html=True)
 
     # Tab 2: Ngữ pháp
     with tab_grammar:
@@ -410,7 +400,7 @@ if st.session_state.analysis_data:
                 st.markdown(f"- **Ngữ cảnh trong bài:** `{g.get('usage_in_text')}`")
                 st.markdown(f"- **Giải thích chi tiết:** {g.get('explanation')}")
 
-    # Tab 3: Từ vựng & Xuất Anki Flashcard
+    # Tab 3: Từ vựng & Anki Flashcard
     with tab_vocab:
         raw_vocab = data.get("vocabulary_list", [])
         vocab_rows = [
@@ -418,7 +408,6 @@ if st.session_state.analysis_data:
             for v in raw_vocab
         ]
         
-        # Nút xuất file Anki Deck
         if vocab_rows:
             anki_df = pd.DataFrame([
                 {
@@ -447,9 +436,9 @@ if st.session_state.analysis_data:
         ]
         st.dataframe(kanji_rows, use_container_width=True)
 
-    # Tab 5: 5 Câu hỏi JLPT tương tác
+    # Tab 5: Câu hỏi JLPT
     with tab_quiz:
-        st.markdown("### ✍️ Luyện tập đọc hiểu JLPT (Trọn bộ 5 câu)")
+        st.markdown("### ✍️ Luyện tập đọc hiểu JLPT")
         questions = data.get("jlpt_practice_questions", [])
         for idx, q in enumerate(questions):
             q_num = q.get("question_number", idx + 1)
@@ -476,7 +465,7 @@ if st.session_state.analysis_data:
                 else:
                     st.error(f"❌ **Chưa chính xác!** Bạn đã chọn **{user_choice}**, đáp án đúng là **{correct_ans}**.")
 
-                st.markdown("**🔍 Phân tích chi tiết từng phương án:**")
+                st.markdown("**🔍 Phân tích chi tiết:**")
                 for opt_k in choice_keys:
                     explanation_text = opt_analysis.get(opt_k, "Chưa có phân tích.")
                     if opt_k == correct_ans:
@@ -485,7 +474,7 @@ if st.session_state.analysis_data:
                         st.markdown(f"- ❌ **Đáp án {opt_k}:** {explanation_text}")
             st.markdown("---")
 
-    # Khu vực liên kết tiếp thị (Affiliate)
+    # Tài liệu gợi ý
     st.markdown("### 📚 Tài liệu gợi ý nâng cao trình độ")
     st.caption("*Trang web có thể nhận hoa hồng khi bạn mua qua liên kết giới thiệu mà không phát sinh thêm chi phí.*")
     aff_col1, aff_col2 = st.columns(2)
@@ -494,17 +483,7 @@ if st.session_state.analysis_data:
     with aff_col2:
         st.markdown("👉 [Giáo trình tiếng Nhật tổng hợp & Từ vựng](https://shopee.vn)")
 
-# MỤC GÓP Ý CỦA NGƯỜI DÙNG
+# Form góp ý
 st.markdown("<br><hr>", unsafe_allow_html=True)
 with st.expander("💌 Góp ý & Phản hồi phát triển trang web"):
-    st.write("Chúng tôi luôn lắng nghe ý kiến của bạn để hoàn thiện công cụ luyện đọc tiếng Nhật tốt hơn mỗi ngày!")
-    with st.form("feedback_form", clear_on_submit=True):
-        fb_name = st.text_input("Tên hoặc Email của bạn (không bắt buộc):")
-        fb_type = st.selectbox("Loại góp ý:", ["Đề xuất tính năng mới", "Báo lỗi phân tích/AI", "Góp ý giao diện", "Khác"])
-        fb_content = st.text_area("Nội dung góp ý chi tiết:", placeholder="Hãy nhập ý kiến của bạn tại đây...")
-        submitted = st.form_submit_button("📩 Gửi góp ý")
-        if submitted:
-            if fb_content.strip():
-                st.success("🌸 Cảm ơn bạn rất nhiều! Góp ý của bạn đã được ghi nhận thành công.")
-            else:
-                st.warning("⚠️ Vui lòng nhập nội dung góp ý trước khi bấm gửi.")
+    st.write("Chúng tôi luôn lắng nghe ý
