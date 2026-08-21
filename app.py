@@ -306,24 +306,34 @@ Bạn là giáo viên tiếng Nhật JLPT cao cấp. Hãy phân tích bài đọ
         "D": "Giải thích tại sao sai"
       }
     }
+  ],
+  "kanji_reading_questions": [
+    {
+      "question_number": 1,
+      "direction": "forward",
+      "prompt_text": "Nếu direction=forward: 1 từ có Hán tự lấy từ bài đọc (vd: 除草作業). Nếu direction=reverse: cách đọc hiragana của 1 từ lấy từ bài đọc (vd: じょそうさぎょう)",
+      "options": { "A": "Lựa chọn A", "B": "Lựa chọn B", "C": "Lựa chọn C", "D": "Lựa chọn D" },
+      "correct_answer": "A",
+      "explanation": "Giải thích ngắn gọn cách đọc/nghĩa đúng"
+    }
   ]
 }
-YÊU CẦU VỀ ĐỘ ĐẦY ĐỦ:
-- "vocabulary_list": đây là DANH SÁCH TRA CỨU khi người học bôi đen bất kỳ từ nào trong bài, nên phải liệt kê GẦN NHƯ TOÀN BỘ các từ/cụm từ có nghĩa độc lập xuất hiện trong bài đọc — không chỉ những từ "khó" hay từ vựng JLPT. Cụ thể phải bao gồm CẢ:
-  * Danh từ thường/địa danh/tên riêng (vd: 栃木県, 鹿沼市, tên tuyến tàu, tên người, tên công ty...) dù nghe "hiển nhiên" với người bản xứ.
-  * Động từ, tính từ, phó từ, liên từ xuất hiện trong bài (kể cả những từ sơ cấp N5).
-  * Cụm danh từ ghép (compound noun) nếu cụm đó thường được tra như 1 đơn vị nghĩa (vd: 特急列車, 運輸安全委員会).
-  Mỗi từ trong "paragraphs" chỉ cần xuất hiện trong "vocabulary_list" MỘT LẦN (không lặp nếu từ đó xuất hiện nhiều lần trong bài). Không giới hạn số lượng tối đa — bài càng dài, danh sách càng dài, đó là điều BÌNH THƯỜNG và ĐÚNG YÊU CẦU, không được rút gọn vì lo ngại danh sách quá dài.
-- "kanji_list": liệt kê TẤT CẢ Hán tự xuất hiện trong bài (không lặp lại Hán tự đã liệt kê). Với MỖI Hán tự — KHÔNG NGOẠI LỆ, KHÔNG được để mảng "example_words" rỗng — bổ sung ÍT NHẤT 2 từ vựng ví dụ THẬT SỰ TỒN TẠI trong tiếng Nhật có chứa Hán tự đó — được phép ghép với BẤT KỲ Hán tự nào khác mà bạn biết là tạo thành từ có nghĩa (hoàn toàn KHÔNG giới hạn hay ưu tiên trong phạm vi các Hán tự xuất hiện ở bài đọc này), miễn là đó là từ vựng có thật, thường gặp, kèm cách đọc và nghĩa tiếng Việt chính xác. Nếu thực sự không tìm được từ ghép nào khác, ít nhất phải đưa chính Hán tự đó (dùng độc lập, nếu có nghĩa riêng) làm 1 ví dụ. TUYỆT ĐỐI không bịa ra tổ hợp không tồn tại.
-Chỉ tạo 3 đến 5 câu hỏi trắc nghiệm hay nhất, mỗi câu phải có "question_number" DUY NHẤT không trùng lặp (1, 2, 3...). Đảm bảo JSON hợp lệ, không chứa ký tự xuống dòng chưa escape.
+YÊU CẦU QUAN TRỌNG:
+- "vocabulary_list", "grammar_analysis", "kanji_list": SAU KHI xác định "estimated_jlpt_level" của bài (vd N3), CHỈ liệt kê các mục có "jlpt_level" BẰNG HOẶC KHÓ HƠN cấp độ đó (tức từ N3 trở lên theo hướng khó dần: N3, N2, N1 — bỏ qua các mục N4/N5 dễ hơn cấp độ bài, vì người học ở trình độ này đã biết). Nếu bài được ước tính là N5 hoặc N4 (cấp thấp nhất), liệt kê toàn bộ mục ở đúng cấp đó trở lên vì không có gì "dễ hơn" để bỏ qua.
+- "kanji_list": với MỖI Hán tự được liệt kê — KHÔNG NGOẠI LỆ, KHÔNG được để mảng "example_words" rỗng — bổ sung ÍT NHẤT 2 từ vựng ví dụ THẬT SỰ TỒN TẠI trong tiếng Nhật có chứa Hán tự đó, được phép ghép với BẤT KỲ Hán tự nào khác mà bạn biết (không giới hạn trong phạm vi bài đọc), miễn là từ có thật, kèm cách đọc và nghĩa tiếng Việt chính xác. Nếu thực sự không tìm được từ ghép nào khác, đưa chính Hán tự đó (dùng độc lập, nếu có nghĩa riêng) làm 1 ví dụ. TUYỆT ĐỐI không bịa ra tổ hợp không tồn tại.
+- "jlpt_practice_questions": tạo ĐÚNG 5 câu hỏi trắc nghiệm đọc hiểu (không phải 3-5, luôn luôn là 5 câu), mỗi câu có "question_number" DUY NHẤT không trùng lặp (1 đến 5).
+- "kanji_reading_questions": tạo ĐÚNG 5 câu hỏi trắc nghiệm về CÁCH ĐỌC Hán tự, dựa trên các từ có Hán tự xuất hiện trong "kanji_list"/"vocabulary_list" của chính bài đọc này (không dùng từ ngoài bài). Chia khoảng 2-3 câu "direction": "forward" (đưa ra 1 từ viết bằng Hán tự, 4 lựa chọn là các cách đọc hiragana — 1 đúng + 3 gây nhiễu hợp lý: đọc sai âm On/Kun, nhầm trường âm/xúc âm, hoặc cách đọc của Hán tự tương tự) và 2-3 câu "direction": "reverse" (đưa ra 1 cách đọc hiragana, 4 lựa chọn là các từ viết bằng Hán tự — 1 đúng + 3 từ Hán tự gây nhiễu hợp lý, không phải từ ngẫu nhiên vô nghĩa). "question_number" của phần này đánh số riêng từ 1 đến 5, độc lập với "jlpt_practice_questions".
+Đảm bảo JSON hợp lệ, không chứa ký tự xuống dòng chưa escape.
 """
 
-# FIX #13: trước đây chỉ DẶN trong SYSTEM_PROMPT là mỗi Hán tự phải có
-# "example_words", nhưng lời dặn suông trong prompt không được Gemini
-# tuân thủ tuyệt đối -> đây là lý do tab Hán tự hay hiện "Chưa có ví dụ
-# từ vựng". Cách sửa đúng gốc: khai báo response_schema (kiểu OpenAPI)
-# cho Gemini API — lúc này "example_words" trở thành field BẮT BUỘC với
-# tối thiểu 2 phần tử, model không thể trả thiếu được nữa.
+
+# FIX #13: response_schema (kiểu OpenAPI) ép Gemini phải LUÔN trả về field
+# "example_words" (không thể thiếu field), giúp giảm hẳn tình trạng tab
+# Hán tự hiện "Chưa có ví dụ từ vựng". Lưu ý: SDK google-generativeai đang
+# dùng không hỗ trợ "minItems", nên số lượng tối thiểu (>=2) chỉ được đảm
+# bảo qua lời dặn mạnh trong SYSTEM_PROMPT, không ép được bằng schema.
+# Cũng dùng RESPONSE_SCHEMA để thêm "kanji_reading_questions" (trắc nghiệm
+# đọc Kanji xuôi/ngược theo yêu cầu mới).
 RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -432,8 +442,30 @@ RESPONSE_SCHEMA = {
                 "required": ["question_number", "question_text", "question_vietnamese", "options", "correct_answer", "option_analysis"],
             },
         },
+        "kanji_reading_questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "question_number": {"type": "integer"},
+                    "direction": {"type": "string"},
+                    "prompt_text": {"type": "string"},
+                    "options": {
+                        "type": "object",
+                        "properties": {
+                            "A": {"type": "string"}, "B": {"type": "string"},
+                            "C": {"type": "string"}, "D": {"type": "string"},
+                        },
+                        "required": ["A", "B", "C", "D"],
+                    },
+                    "correct_answer": {"type": "string"},
+                    "explanation": {"type": "string"},
+                },
+                "required": ["question_number", "direction", "prompt_text", "options", "correct_answer", "explanation"],
+            },
+        },
     },
-    "required": ["summary", "paragraphs", "grammar_analysis", "vocabulary_list", "kanji_list", "jlpt_practice_questions"],
+    "required": ["summary", "paragraphs", "grammar_analysis", "vocabulary_list", "kanji_list", "jlpt_practice_questions", "kanji_reading_questions"],
 }
 
 
@@ -465,112 +497,6 @@ def sanitize_furigana_html(raw_html: str) -> str:
     return re.sub(rf'</?(?!(?:{_ALLOWED_RUBY_TAGS})\b)[a-zA-Z][^>]*>', '', raw_html)
 
 
-# FIX #9 (UI): hover/chạm vào một từ trong bài đọc sẽ hiện tooltip gồm
-# cách đọc + từ loại + nghĩa tiếng Việt, lấy dữ liệu từ "vocabulary_list".
-# Chỉ thay thế trong các ĐOẠN VĂN BẢN THUẦN (không đụng vào bên trong các
-# thẻ HTML có sẵn như <ruby>/<rt>) để không phá vỡ cấu trúc furigana.
-def build_vocab_tooltip_index(vocabulary_list: list) -> dict:
-    idx = {}
-    for v in vocabulary_list or []:
-        w = (v.get("word") or "").strip()
-        if w:
-            idx[w] = v
-    return idx
-
-
-# FIX #12 (UI): trước đây MỌI từ vựng khớp đều bị gạch chân dotted sẵn
-# trong bài đọc (gây rối mắt). Đổi sang mô hình "bôi đen từ nào, hiện
-# nghĩa từ đó" — không gạch chân gì cả, người học tự chọn (drag/chạm) đúng
-# từ mình muốn tra, tooltip nổi lên ngay tại vị trí bôi đen. Vì cần bắt
-# sự kiện chọn văn bản (mouseup/touchend) bằng JavaScript thực thi được,
-# phải dùng st.components.v1.html (iframe) thay vì st.markdown (script
-# trong st.markdown không được trình duyệt thực thi).
-def build_reader_component_html(cards_html: list, vocab_index: dict) -> str:
-    vocab_payload = {
-        w: {
-            "word": w,
-            "reading": info.get("reading", ""),
-            "pos": info.get("part_of_speech", ""),
-            "meaning": info.get("vietnamese_meaning", ""),
-        }
-        for w, info in (vocab_index or {}).items()
-    }
-    # Escape "</" để JSON không bị "vỡ" ra khỏi thẻ <script> khi nhúng.
-    vocab_json = json.dumps(vocab_payload, ensure_ascii=False).replace("</", "<\\/")
-    cards_joined = "\n".join(cards_html)
-
-    return f"""
-    <style>
-        body {{ margin: 0; font-family: 'Noto Sans JP', sans-serif; -webkit-tap-highlight-color: transparent; }}
-        #jp-reader-scroll {{ max-height: 640px; overflow-y: auto; padding: 4px 10px 4px 4px; }}
-        .reader-paragraph-card {{
-            background-color: #ffffff; padding: 20px 24px; border-radius: 12px;
-            border: 1px solid #f0eae1; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 20px;
-        }}
-        .jp-text-line {{ font-size: 1.3rem; line-height: 2.8rem; color: #2c3e50; letter-spacing: 0.04em; }}
-        ruby {{ ruby-position: over; }}
-        rt {{ font-size: 0.58em; color: #e91e63; font-weight: 600; user-select: none; }}
-        .vi-translation-box {{
-            background: rgba(255, 243, 224, 0.85); border-left: 4px solid #ff9800; padding: 10px 16px;
-            border-radius: 0 8px 8px 0; margin-top: 14px; font-size: 1.05rem; font-weight: 500;
-            color: #d84315; line-height: 1.6rem;
-        }}
-        #jp-sel-tooltip {{
-            position: fixed; display: none; background: #2c2c2c; color: #fff; padding: 8px 12px;
-            border-radius: 8px; font-size: 0.9rem; max-width: 280px; z-index: 999999; line-height: 1.5;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
-        }}
-        #jp-sel-tooltip b {{ color: #ff80ab; }}
-        #jp-sel-tooltip .jp-sel-empty {{ color: #ccc; font-style: italic; }}
-    </style>
-    <div id="jp-reader-scroll">{cards_joined}</div>
-    <div id="jp-sel-tooltip"></div>
-    <script>
-        const VOCAB = {vocab_json};
-        const tooltip = document.getElementById('jp-sel-tooltip');
-
-        function findEntry(text) {{
-            if (!text) return null;
-            if (VOCAB[text]) return VOCAB[text];
-            let best = null;
-            for (const key in VOCAB) {{
-                if (text.indexOf(key) !== -1 && (!best || key.length > best.length)) best = key;
-            }}
-            return best ? VOCAB[best] : null;
-        }}
-
-        function showTooltip(rect, entry, rawText) {{
-            if (entry) {{
-                tooltip.innerHTML = '<b>' + entry.word + '</b>' +
-                    (entry.reading ? ' [' + entry.reading + ']' : '') + '<br>' +
-                    (entry.pos ? entry.pos + ' · ' : '') + (entry.meaning || '');
-            }} else {{
-                tooltip.innerHTML = '<b>' + rawText + '</b><br><span class="jp-sel-empty">Chưa có trong danh sách — thử bôi lại sát đúng 1 từ (có thể bạn đang chọn thừa/thiếu 1 ký tự)</span>';
-            }}
-            const top = Math.max(8, rect.top - 8);
-            const left = Math.min(Math.max(8, rect.left + rect.width / 2 - 120), window.innerWidth - 250);
-            tooltip.style.top = top + 'px';
-            tooltip.style.left = left + 'px';
-            tooltip.style.transform = 'translateY(-100%)';
-            tooltip.style.display = 'block';
-        }}
-
-        function handleSelection() {{
-            const sel = window.getSelection();
-            const text = sel ? sel.toString().trim() : '';
-            if (!text || sel.rangeCount === 0) {{ tooltip.style.display = 'none'; return; }}
-            const rect = sel.getRangeAt(0).getBoundingClientRect();
-            if (!rect || (rect.width === 0 && rect.height === 0)) {{ tooltip.style.display = 'none'; return; }}
-            showTooltip(rect, findEntry(text), text);
-        }}
-
-        document.addEventListener('mouseup', handleSelection);
-        document.addEventListener('touchend', handleSelection);
-        document.addEventListener('mousedown', function(e) {{
-            if (e.target !== tooltip) tooltip.style.display = 'none';
-        }});
-    </script>
-    """
 
 
 # FIX #5: cắt văn bản cho TTS tại ranh giới câu tiếng Nhật gần nhất
@@ -765,9 +691,6 @@ if st.session_state.analysis_data:
         with ctrl_col2:
             show_translation = st.toggle("🇻🇳 Hiển thị bản dịch tiếng Việt", value=True)
 
-        vocab_index = build_vocab_tooltip_index(data.get("vocabulary_list", []))
-
-        cards_html = []
         for p in data.get("paragraphs", []):
             if furigana_mode == "Hiện toàn bộ Furigana":
                 jp_content = sanitize_furigana_html(p.get('furigana_html', p.get('original_text', '')))
@@ -779,19 +702,13 @@ if st.session_state.analysis_data:
                 trans_text = html_lib.escape(p.get('vietnamese_translation'))
                 trans_html = f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch:</strong> {trans_text}</div>"
 
-            cards_html.append(f"""
+            full_card_html = f"""
             <div class="reader-paragraph-card">
                 <div class="jp-text-line">{jp_content}</div>
                 {trans_html}
             </div>
-            """)
-
-        st.caption("🖱️ Bôi đen (hoặc chạm giữ trên điện thoại) vào một từ trong bài để xem nghĩa của từ đó.")
-        st.components.v1.html(
-            build_reader_component_html(cards_html, vocab_index),
-            height=660,
-            scrolling=False
-        )
+            """
+            st.markdown(full_card_html, unsafe_allow_html=True)
 
     # Tab 2: Ngữ pháp
     with tab_grammar:
@@ -902,6 +819,49 @@ if st.session_state.analysis_data:
                         st.markdown(f"- ✅ **Đáp án {opt_k}:** {explanation_text}")
                     else:
                         st.markdown(f"- ❌ **Đáp án {opt_k}:** {explanation_text}")
+            st.markdown("---")
+
+        # Phần trắc nghiệm đọc Kanji (xuôi/ngược)
+        st.markdown("### 🈲 Trắc nghiệm đọc Kanji")
+        st.caption("🔁 **Đọc xuôi**: cho từ Hán tự, chọn cách đọc đúng　·　**Đọc ngược**: cho cách đọc, chọn từ Hán tự đúng")
+        kanji_questions = data.get("kanji_reading_questions", [])
+        if not kanji_questions:
+            st.info("💡 Bài phân tích này chưa có dữ liệu trắc nghiệm Kanji — phân tích lại bài đọc để có phần này.")
+        for k_idx, kq in enumerate(kanji_questions):
+            kq_num = kq.get("question_number", k_idx + 1)
+            direction = kq.get("direction", "forward")
+            direction_label = "🔁 Đọc xuôi (chọn cách đọc)" if direction == "forward" else "🔀 Đọc ngược (chọn từ Hán tự)"
+            st.markdown(f"#### Câu {kq_num} — {direction_label}")
+            prompt_escaped = html_lib.escape(kq.get('prompt_text', ''))
+            st.markdown(
+                f"<div class='jp-text-line' style='font-size:1.6rem; font-weight:700; margin:6px 0 12px;'>{prompt_escaped}</div>",
+                unsafe_allow_html=True
+            )
+
+            k_opts = kq.get("options", {})
+            k_choice_keys = [k for k in ["A", "B", "C", "D"] if k in k_opts]
+
+            # Dùng namespace key riêng "kanji_quiz_radio_" (khác với "quiz_radio_"
+            # của phần đọc hiểu ở trên) để tránh trùng key giữa 2 bộ câu hỏi,
+            # vẫn ghép analysis_id + vị trí để không dính state bài phân tích cũ.
+            k_user_choice = st.radio(
+                f"Chọn đáp án cho câu {kq_num}:",
+                options=k_choice_keys,
+                format_func=lambda x: f"{x}. {k_opts.get(x, '')}",
+                key=f"kanji_quiz_radio_{st.session_state.analysis_id}_{k_idx}",
+                index=None
+            )
+
+            k_correct_ans = kq.get("correct_answer")
+            if k_user_choice is not None:
+                if not k_correct_ans:
+                    st.warning("⚠️ Câu này thiếu đáp án đúng từ AI, không thể chấm điểm.")
+                elif k_user_choice == k_correct_ans:
+                    st.success(f"🎉 **Chính xác!** Đáp án đúng là **{k_correct_ans}**.")
+                else:
+                    st.error(f"❌ **Chưa chính xác!** Bạn đã chọn **{k_user_choice}**, đáp án đúng là **{k_correct_ans}**.")
+                if kq.get("explanation"):
+                    st.markdown(f"**🔍 Giải thích:** {kq.get('explanation')}")
             st.markdown("---")
 
     # Tài liệu gợi ý
