@@ -309,7 +309,11 @@ Bạn là giáo viên tiếng Nhật JLPT cao cấp. Hãy phân tích bài đọ
   ]
 }
 YÊU CẦU VỀ ĐỘ ĐẦY ĐỦ:
-- "vocabulary_list": liệt kê ĐẦY ĐỦ các từ vựng đáng chú ý trong bài (ưu tiên từ N3 trở lên, và mọi từ ít gặp/khó với người học), không giới hạn số lượng tối đa, không bỏ sót từ chỉ vì bài dài.
+- "vocabulary_list": đây là DANH SÁCH TRA CỨU khi người học bôi đen bất kỳ từ nào trong bài, nên phải liệt kê GẦN NHƯ TOÀN BỘ các từ/cụm từ có nghĩa độc lập xuất hiện trong bài đọc — không chỉ những từ "khó" hay từ vựng JLPT. Cụ thể phải bao gồm CẢ:
+  * Danh từ thường/địa danh/tên riêng (vd: 栃木県, 鹿沼市, tên tuyến tàu, tên người, tên công ty...) dù nghe "hiển nhiên" với người bản xứ.
+  * Động từ, tính từ, phó từ, liên từ xuất hiện trong bài (kể cả những từ sơ cấp N5).
+  * Cụm danh từ ghép (compound noun) nếu cụm đó thường được tra như 1 đơn vị nghĩa (vd: 特急列車, 運輸安全委員会).
+  Mỗi từ trong "paragraphs" chỉ cần xuất hiện trong "vocabulary_list" MỘT LẦN (không lặp nếu từ đó xuất hiện nhiều lần trong bài). Không giới hạn số lượng tối đa — bài càng dài, danh sách càng dài, đó là điều BÌNH THƯỜNG và ĐÚNG YÊU CẦU, không được rút gọn vì lo ngại danh sách quá dài.
 - "kanji_list": liệt kê TẤT CẢ Hán tự xuất hiện trong bài (không lặp lại Hán tự đã liệt kê). Với MỖI Hán tự, bổ sung 2-3 từ vựng ví dụ THẬT SỰ TỒN TẠI trong tiếng Nhật có chứa Hán tự đó — được phép ghép với BẤT KỲ Hán tự nào khác mà bạn biết là tạo thành từ có nghĩa (hoàn toàn KHÔNG giới hạn hay ưu tiên trong phạm vi các Hán tự xuất hiện ở bài đọc này), miễn là đó là từ vựng có thật, thường gặp, kèm cách đọc và nghĩa tiếng Việt chính xác. TUYỆT ĐỐI không bịa ra tổ hợp không tồn tại.
 Chỉ tạo 3 đến 5 câu hỏi trắc nghiệm hay nhất, mỗi câu phải có "question_number" DUY NHẤT không trùng lặp (1, 2, 3...). Đảm bảo JSON hợp lệ, không chứa ký tự xuống dòng chưa escape.
 """
@@ -542,7 +546,7 @@ def build_reader_component_html(cards_html: list, vocab_index: dict) -> str:
                     (entry.reading ? ' [' + entry.reading + ']' : '') + '<br>' +
                     (entry.pos ? entry.pos + ' · ' : '') + (entry.meaning || '');
             }} else {{
-                tooltip.innerHTML = '<b>' + rawText + '</b><br><span class="jp-sel-empty">Không có trong danh sách từ vựng của bài</span>';
+                tooltip.innerHTML = '<b>' + rawText + '</b><br><span class="jp-sel-empty">Chưa có trong danh sách — thử bôi lại sát đúng 1 từ (có thể bạn đang chọn thừa/thiếu 1 ký tự)</span>';
             }}
             const top = Math.max(8, rect.top - 8);
             const left = Math.min(Math.max(8, rect.left + rect.width / 2 - 120), window.innerWidth - 250);
@@ -686,6 +690,18 @@ if analyze_btn:
             except Exception as e:
                 status.update(label="❌ Có lỗi xảy ra!", state="error", expanded=True)
                 st.error(f"Chi tiết lỗi: {str(e)}")
+                # FIX #14: từ khi mở rộng "vocabulary_list" để liệt kê gần
+                # hết từ trong bài (phục vụ tính năng bôi đen tra nghĩa),
+                # JSON trả về từ AI dài hơn hẳn trước đây -> với bài đọc
+                # RẤT dài, dễ vượt giới hạn output của model giữa chừng,
+                # khiến JSON bị cắt cụt và không parse được. Gợi ý rõ
+                # nguyên nhân này thay vì để người dùng đoán mò.
+                if len(user_text) > 1500:
+                    st.info(
+                        "💡 Bài đọc khá dài (trên 1500 ký tự) — vì công cụ giờ liệt kê gần như "
+                        "toàn bộ từ vựng trong bài, kết quả trả về có thể bị cắt cụt giữa chừng "
+                        "với bài quá dài. Thử chia bài thành 2-3 đoạn ngắn hơn rồi phân tích riêng từng đoạn."
+                    )
 
 # HIỂN THỊ KẾT QUẢ
 if st.session_state.analysis_data:
