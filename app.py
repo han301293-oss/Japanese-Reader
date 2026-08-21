@@ -569,6 +569,12 @@ if analyze_btn:
         st.error("⚠️ Vui lòng cung cấp Gemini API Key để tiếp tục.")
     elif not user_text.strip():
         st.warning("⚠️ Vui lòng nhập nội dung bài đọc.")
+    # FIX #16: nếu văn bản y hệt lần phân tích gần nhất (trong cùng phiên
+    # làm việc) và đã có sẵn kết quả -> dùng lại, KHÔNG gọi thêm API. Tránh
+    # lãng phí hạn ngạch miễn phí (vốn đang eo hẹp) khi lỡ bấm trùng lúc
+    # test/debug hoặc bấm nhầm 2 lần liên tiếp.
+    elif st.session_state.analysis_data and user_text.strip() == st.session_state.current_user_text.strip():
+        st.info("♻️ Bài đọc này giống hệt lần phân tích gần nhất — dùng lại kết quả cũ, không gọi thêm API để tiết kiệm hạn ngạch miễn phí.")
     else:
         with st.status("🌸 Đang xử lý bài học...", expanded=True) as status:
             try:
@@ -576,10 +582,16 @@ if analyze_btn:
                 genai.configure(api_key=api_key)
 
                 model = genai.GenerativeModel(
-                    # Dùng alias "gemini-flash-latest" thay vì ghim cứng version,
-                    # để app tự trỏ tới bản Flash mới nhất mà Google phát hành,
-                    # không phải sửa code mỗi khi có model mới ra mắt.
-                    model_name="gemini-flash-latest",
+                    # FIX #15: alias "gemini-flash-latest" đang trỏ tới Gemini
+                    # 3.7 Flash (ra mắt 13/8/2026, model RẤT MỚI) — free tier
+                    # của model mới chỉ 20 request/ngày/dự án, dễ hết ngay khi
+                    # test vài lần -> lỗi 429 quota exceeded. Ghim tạm về
+                    # "gemini-2.5-flash" (model đã ổn định lâu, free tier rộng
+                    # rãi hơn hẳn) để dùng được ngay. Đánh đổi: mất khả năng
+                    # tự động lên bản mới nhất — cân nhắc bật billing (xem
+                    # phần trao đổi với người dùng) rồi đổi lại "gemini-flash-latest"
+                    # nếu muốn dùng bản mới nhất ổn định lâu dài.
+                    model_name="gemini-2.5-flash",
                     generation_config={
                         "response_mime_type": "application/json",
                         "response_schema": RESPONSE_SCHEMA,
