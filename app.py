@@ -314,7 +314,7 @@ YÊU CẦU VỀ ĐỘ ĐẦY ĐỦ:
   * Động từ, tính từ, phó từ, liên từ xuất hiện trong bài (kể cả những từ sơ cấp N5).
   * Cụm danh từ ghép (compound noun) nếu cụm đó thường được tra như 1 đơn vị nghĩa (vd: 特急列車, 運輸安全委員会).
   Mỗi từ trong "paragraphs" chỉ cần xuất hiện trong "vocabulary_list" MỘT LẦN (không lặp nếu từ đó xuất hiện nhiều lần trong bài). Không giới hạn số lượng tối đa — bài càng dài, danh sách càng dài, đó là điều BÌNH THƯỜNG và ĐÚNG YÊU CẦU, không được rút gọn vì lo ngại danh sách quá dài.
-- "kanji_list": liệt kê TẤT CẢ Hán tự xuất hiện trong bài (không lặp lại Hán tự đã liệt kê). Với MỖI Hán tự, bổ sung 2-3 từ vựng ví dụ THẬT SỰ TỒN TẠI trong tiếng Nhật có chứa Hán tự đó — được phép ghép với BẤT KỲ Hán tự nào khác mà bạn biết là tạo thành từ có nghĩa (hoàn toàn KHÔNG giới hạn hay ưu tiên trong phạm vi các Hán tự xuất hiện ở bài đọc này), miễn là đó là từ vựng có thật, thường gặp, kèm cách đọc và nghĩa tiếng Việt chính xác. TUYỆT ĐỐI không bịa ra tổ hợp không tồn tại.
+- "kanji_list": liệt kê TẤT CẢ Hán tự xuất hiện trong bài (không lặp lại Hán tự đã liệt kê). Với MỖI Hán tự — KHÔNG NGOẠI LỆ, KHÔNG được để mảng "example_words" rỗng — bổ sung ÍT NHẤT 2 từ vựng ví dụ THẬT SỰ TỒN TẠI trong tiếng Nhật có chứa Hán tự đó — được phép ghép với BẤT KỲ Hán tự nào khác mà bạn biết là tạo thành từ có nghĩa (hoàn toàn KHÔNG giới hạn hay ưu tiên trong phạm vi các Hán tự xuất hiện ở bài đọc này), miễn là đó là từ vựng có thật, thường gặp, kèm cách đọc và nghĩa tiếng Việt chính xác. Nếu thực sự không tìm được từ ghép nào khác, ít nhất phải đưa chính Hán tự đó (dùng độc lập, nếu có nghĩa riêng) làm 1 ví dụ. TUYỆT ĐỐI không bịa ra tổ hợp không tồn tại.
 Chỉ tạo 3 đến 5 câu hỏi trắc nghiệm hay nhất, mỗi câu phải có "question_number" DUY NHẤT không trùng lặp (1, 2, 3...). Đảm bảo JSON hợp lệ, không chứa ký tự xuống dòng chưa escape.
 """
 
@@ -389,7 +389,6 @@ RESPONSE_SCHEMA = {
                     "meaning": {"type": "string"},
                     "example_words": {
                         "type": "array",
-                        "minItems": 2,
                         "items": {
                             "type": "object",
                             "properties": {
