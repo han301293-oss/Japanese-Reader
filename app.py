@@ -150,14 +150,9 @@ st.markdown("""
 </style>
 
 <div class="sakura-container">
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
-    <div class="petal"></div>
+    <div class="petal"></div><div class="petal"></div><div class="petal"></div>
+    <div class="petal"></div><div class="petal"></div><div class="petal"></div>
+    <div class="petal"></div><div class="petal"></div>
 </div>
 
 <div class="app-title-fixed">
@@ -260,20 +255,16 @@ def clean_and_parse_json(raw_text):
     if text.endswith("```"):
         text = text[:-3]
     text = text.strip()
-    
     parsed = None
     try:
         parsed = json.loads(text, strict=False)
     except Exception:
         cleaned = re.sub(r'[\x00-\x1f\x7f-\x9f]', lambda m: ' ' if m.group(0) not in ['\n', '\r', '\t'] else m.group(0), text)
         parsed = json.loads(cleaned, strict=False)
-    
-    # Đảm bảo kết quả trả về luôn luôn là dictionary (dict)
     if isinstance(parsed, list) and len(parsed) > 0:
         parsed = parsed[0] if isinstance(parsed[0], dict) else {}
     elif not isinstance(parsed, dict):
         parsed = {}
-        
     return parsed
 
 async def generate_nhk_voice(text):
@@ -299,15 +290,12 @@ if analyze_btn:
                     generation_config={"response_mime_type": "application/json"}
                 )
                 response = model.generate_content(f"{SYSTEM_PROMPT}\n\nVăn bản cần phân tích:\n{user_text}")
-                
                 result = clean_and_parse_json(response.text)
                 if not result:
                     st.error("⚠️ AI trả về dữ liệu không đúng cấu trúc, vui lòng bấm phân tích lại.")
                 else:
                     st.session_state.analysis_data = result
                     st.session_state.current_user_text = user_text
-
-                # Tạo giọng đọc phát thanh viên chất lượng cao bằng edge-tts
                 if EDGE_TTS_AVAILABLE:
                     try:
                         audio_data = asyncio.run(generate_nhk_voice(user_text))
@@ -316,31 +304,21 @@ if analyze_btn:
                         st.session_state.raw_audio_b64 = None
                 else:
                     st.session_state.raw_audio_b64 = None
-
             except Exception as e:
                 st.error(f"Đã xảy ra lỗi khi gọi AI: {str(e)}")
 
-# HIỂN THỊ KẾT QUẢ
 if st.session_state.analysis_data and isinstance(st.session_state.analysis_data, dict):
     data = st.session_state.analysis_data
     summary_data = data.get("summary", {}) if isinstance(data.get("summary"), dict) else {}
-    
     st.success("🎉 Đã phân tích thành công!")
-
-    # Thông tin tổng quan
     sum_col1, sum_col2 = st.columns(2)
     sum_col1.info(f"🏷️ **Cấp độ ước tính:** {summary_data.get('estimated_jlpt_level', 'N/A')}")
     sum_col2.info(f"📖 **Chủ đề:** {summary_data.get('topic', 'Chung')}")
-
-    # Tabs chức năng
     tab_read, tab_grammar, tab_vocab, tab_kanji, tab_quiz = st.tabs([
         "📖 Bài đọc & Dịch", "📝 Ngữ pháp", "📚 Từ vựng", "🈲 Hán tự (Kanji)", "❓ Câu hỏi JLPT (5 câu)"
     ])
-
-    # Tab 1: Bài đọc & Dịch
     with tab_read:
         show_furigana = st.toggle("🌸 Bật Furigana", value=False)
-
         paragraphs = data.get("paragraphs", []) if isinstance(data.get("paragraphs"), list) else []
         for p in paragraphs:
             if isinstance(p, dict):
@@ -348,10 +326,8 @@ if st.session_state.analysis_data and isinstance(st.session_state.analysis_data,
                     st.markdown(f"<div>{p.get('furigana_html', '')}</div>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"<div class='plain-jp-text'>{p.get('original_text', '')}</div>", unsafe_allow_html=True)
-                
                 st.markdown(f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch:</strong> {p.get('vietnamese_translation', '')}</div>", unsafe_allow_html=True)
                 st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-
         if st.session_state.raw_audio_b64:
             st.markdown(f"""
             <div class="sticky-audio-bar">
@@ -372,10 +348,92 @@ if st.session_state.analysis_data and isinstance(st.session_state.analysis_data,
                 </div>
             </div>
             """, unsafe_allow_html=True)
-
-    # Tab 2: Ngữ pháp
     with tab_grammar:
         grammars = data.get("grammar_analysis", []) if isinstance(data.get("grammar_analysis"), list) else []
         for g in grammars:
             if isinstance(g, dict):
-                with st.expander(f"📌
+                p_text = g.get("pattern", "")
+                l_text = g.get("jlpt_level", "")
+                m_text = g.get("meaning", "")
+                exp_title = "📌 " + str(p_text) + " [" + str(l_text) + "] - " + str(m_text)
+                with st.expander(exp_title):
+                    st.markdown(f"- **Ngữ cảnh trong bài:** `{g.get('usage_in_text', '')}`")
+                    st.markdown(f"- **Giải thích chi tiết:** {g.get('explanation', '')}")
+    with tab_vocab:
+        vocabs = data.get("vocabulary_list", []) if isinstance(data.get("vocabulary_list"), list) else []
+        vocab_rows = [
+            {"Từ vựng": v.get("word", ""), "Cách đọc": v.get("reading", ""), "Cấp độ": v.get("jlpt_level", ""), "Từ loại": v.get("part_of_speech", ""), "Ý nghĩa": v.get("vietnamese_meaning", "")}
+            for v in vocabs if isinstance(v, dict)
+        ]
+        st.dataframe(vocab_rows, use_container_width=True)
+    with tab_kanji:
+        kanjis = data.get("kanji_list", []) if isinstance(data.get("kanji_list"), list) else []
+        kanji_rows = [
+            {"Chữ Hán": k.get("kanji", ""), "Hán Việt": k.get("han_viet", ""), "Cấp độ": k.get("jlpt_level", ""), "Âm On": k.get("onyomi", ""), "Âm Kun": k.get("kunyomi", ""), "Ý nghĩa": k.get("meaning", "")}
+            for k in kanjis if isinstance(k, dict)
+        ]
+        st.dataframe(kanji_rows, use_container_width=True)
+    with tab_quiz:
+        st.markdown("### ✍️ Luyện tập đọc hiểu JLPT (Trọn bộ 5 câu)")
+        questions = data.get("jlpt_practice_questions", []) if isinstance(data.get("jlpt_practice_questions"), list) else []
+        for idx, q in enumerate(questions):
+            if isinstance(q, dict):
+                q_num = q.get("question_number", idx + 1)
+                st.markdown(f"#### Câu {q_num}: {q.get('question_text', '')}")
+                st.caption(f"*(Dịch: {q.get('question_vietnamese', '')})*")
+                opts = q.get("options", {}) if isinstance(q.get("options"), dict) else {}
+                choice_keys = [k for k in ["A", "B", "C", "D"] if k in opts]
+                user_choice = st.radio(
+                    f"Chọn đáp án cho câu {q_num}:",
+                    options=choice_keys,
+                    format_func=lambda x: f"{x}. {opts.get(x, '')}",
+                    key=f"quiz_radio_{q_num}",
+                    index=None
+                )
+                correct_ans = q.get("correct_answer", "A")
+                opt_analysis = q.get("option_analysis", {}) if isinstance(q.get("option_analysis"), dict) else {}
+                if user_choice is not None:
+                    if user_choice == correct_ans:
+                        st.success(f"🎉 **Chính xác!** Đáp án đúng là **{correct_ans}**.")
+                    else:
+                        st.error(f"❌ **Chưa chính xác!** Bạn đã chọn **{user_choice}**, đáp án đúng là **{correct_ans}**.")
+                    st.markdown("**🔍 Phân tích chi tiết từng phương án:**")
+                    for opt_k in choice_keys:
+                        explanation_text = opt_analysis.get(opt_k, "Chưa có phân tích.")
+                        if opt_k == correct_ans:
+                            st.markdown(f"- ✅ **Đáp án {opt_k}:** {explanation_text}")
+                        else:
+                            st.markdown(f"- ❌ **Đáp án {opt_k}:** {explanation_text}")
+                st.markdown("---")
+    st.markdown("### 📚 Tài liệu gợi ý nâng cao trình độ")
+    st.caption("*Trang web có thể nhận hoa hồng khi bạn mua qua liên kết giới thiệu mà không phát sinh thêm chi phí.*")
+    aff_col1, aff_col2 = st.columns(2)
+    with aff_col1:
+        st.markdown("👉 [Tham khảo trọn bộ sách luyện thi JLPT N3-N1 chính hãng](https://shopee.vn)")
+    with aff_col2:
+        st.markdown("👉 [Giáo trình tiếng Nhật tổng hợp & Từ vựng](https://shopee.vn)")
+
+st.markdown("<br><hr>", unsafe_allow_html=True)
+with st.expander("💌 Góp ý & Phản hồi phát triển trang web"):
+    st.write("Chúng tôi luôn lắng nghe ý kiến của bạn để hoàn thiện công cụ luyện đọc tiếng Nhật tốt hơn mỗi ngày!")
+    with st.form("feedback_form", clear_on_submit=True):
+        fb_name = st.text_input("Tên hoặc Email của bạn (không bắt buộc):")
+        fb_type = st.selectbox("Loại góp ý:", ["Đề xuất tính năng mới", "Báo lỗi phân tích/AI", "Góp ý giao diện", "Khác"])
+        fb_content = st.text_area("Nội dung góp ý chi tiết:", placeholder="Hãy nhập ý kiến của bạn tại đây...")
+        submitted = st.form_submit_button("📩 Gửi góp ý")
+        if submitted:
+            if fb_content.strip():
+                if sheet_webhook_url:
+                    try:
+                        payload = {
+                            "time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                            "name": fb_name if fb_name.strip() else "Ẩn danh",
+                            "type": fb_type,
+                            "content": fb_content
+                        }
+                        requests.post(sheet_webhook_url, json=payload, timeout=5)
+                    except Exception:
+                        pass
+                st.success("🌸 Cảm ơn bạn rất nhiều! Góp ý của bạn đã được ghi nhận thành công.")
+            else:
+                st.warning("⚠️ Vui lòng nhập nội dung góp ý trước khi bấm gửi.")
