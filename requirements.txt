@@ -1,6 +1,4 @@
 streamlit
 google-generativeai
-gtts
-pandas
-gspread
-google-auth
+edge-tts
+requests
