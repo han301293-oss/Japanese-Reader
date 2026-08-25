@@ -39,7 +39,6 @@ st.markdown("""
             box-shadow: 0 2px 10px rgba(255, 117, 140, 0.2) !important;
         }
     }
-
     .app-title-fixed {
         position: fixed;
         top: 6px;
@@ -63,12 +62,10 @@ st.markdown("""
         .app-main-title { color: #ff80ab !important; }
         .app-sub-title { color: #bbb !important; }
     }
-
     .block-container {
         padding-top: 4.2rem !important;
         padding-bottom: 7rem !important;
     }
-
     .sakura-container {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -91,7 +88,6 @@ st.markdown("""
     .petal:nth-child(6) { left: 72%; width: 13px; height: 15px; animation-duration: 9.5s, 4s; animation-delay: 4s; opacity: 0.65; }
     .petal:nth-child(7) { left: 85%; width: 12px; height: 14px; animation-duration: 11.5s, 3s; animation-delay: 1s; }
     .petal:nth-child(8) { left: 95%; width: 14px; height: 16px; animation-duration: 8.5s, 2.8s; animation-delay: 2.5s; }
-
     @keyframes fall {
         0% { top: -20px; transform: rotate(0deg); }
         100% { top: 100vh; transform: rotate(360deg); }
@@ -100,11 +96,9 @@ st.markdown("""
         0% { transform: translateX(0px) rotate(0deg); }
         100% { transform: translateX(35px) rotate(45deg); }
     }
-
     ruby { font-size: 1.35rem; line-height: 2.3rem; font-family: 'Hiragino Mincho Pro', 'Yu Mincho', serif; }
     rt { font-size: 0.78rem; color: #e91e63; font-weight: 600; }
     .plain-jp-text { font-size: 1.25rem; line-height: 2.1rem; font-family: 'Hiragino Mincho Pro', 'Yu Mincho', serif; }
-
     .vi-translation-box {
         background: rgba(255, 243, 224, 0.75);
         border-left: 4px solid #ff9800;
@@ -122,7 +116,6 @@ st.markdown("""
             color: #ffe0b2;
         }
     }
-
     .sticky-audio-bar {
         position: fixed;
         bottom: 0;
@@ -161,14 +154,12 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Lấy API Key và Webhook URL từ Secrets hoặc Sidebar
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 sheet_webhook_url = st.secrets.get("GOOGLE_SHEET_WEBHOOK_URL", "")
 
 if not api_key:
     api_key = st.sidebar.text_input("🔑 Nhập Gemini API Key của bạn:", type="password")
 
-# Khởi tạo session_state
 if "analysis_data" not in st.session_state:
     st.session_state.analysis_data = None
 if "current_user_text" not in st.session_state:
@@ -176,7 +167,6 @@ if "current_user_text" not in st.session_state:
 if "raw_audio_b64" not in st.session_state:
     st.session_state.raw_audio_b64 = None
 
-# Khung nhập bài đọc
 user_text = st.text_area(
     "📋 Dán bài đọc tiếng Nhật vào đây:",
     height=160,
@@ -276,6 +266,125 @@ async def generate_nhk_voice(text):
             mp3_data.extend(chunk["data"])
     return bytes(mp3_data)
 
+def generate_pdf_html(data_obj, include_furigana=True):
+    topic = data_obj.get("summary", {}).get("topic", "Bài đọc tiếng Nhật")
+    level = data_obj.get("summary", {}).get("estimated_jlpt_level", "N/A")
+    paragraphs = data_obj.get("paragraphs", [])
+    
+    body_items = ""
+    for idx, p in enumerate(paragraphs):
+        jp_content = p.get("furigana_html", "") if include_furigana else p.get("original_text", "")
+        vi_trans = p.get("vietnamese_translation", "")
+        body_items += f"""
+        <div class="paragraph-card">
+            <div class="para-badge">Đoạn {idx + 1}</div>
+            <div class="jp-text">{jp_content}</div>
+            <div class="vi-text">🇻🇳 <b>Dịch:</b> {vi_trans}</div>
+        </div>
+        """
+
+    html_template = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{topic} - JLPT Reader</title>
+    <style>
+        @page {{ size: A4; margin: 18mm 15mm; }}
+        body {{
+            font-family: 'Segoe UI', Arial, 'Hiragino Mincho Pro', 'Yu Mincho', sans-serif;
+            color: #2c3e50;
+            line-height: 1.6;
+            margin: 0;
+            padding: 10px;
+        }}
+        .header-box {{
+            border-bottom: 2px solid #ff758c;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }}
+        .doc-title {{
+            font-size: 20px;
+            font-weight: bold;
+            color: #d81b60;
+            margin: 0;
+        }}
+        .meta-tag {{
+            background: #fff0f3;
+            color: #d81b60;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            border: 1px solid #ffccd5;
+        }}
+        .paragraph-card {{
+            margin-bottom: 22px;
+            padding-bottom: 16px;
+            border-bottom: 1px dashed #e0e0e0;
+            page-break-inside: avoid;
+        }}
+        .para-badge {{
+            font-size: 11px;
+            font-weight: bold;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }}
+        .jp-text {{
+            font-size: 16px;
+            line-height: 2.3;
+            color: #111;
+            margin-bottom: 8px;
+            font-family: 'Hiragino Mincho Pro', 'Yu Mincho', 'MS Mincho', serif;
+        }}
+        ruby {{ font-size: 16px; }}
+        rt {{ font-size: 9px; color: #d81b60; font-weight: bold; }}
+        .vi-text {{
+            background: #fff8e1;
+            border-left: 4px solid #ff9800;
+            padding: 8px 12px;
+            border-radius: 0 6px 6px 0;
+            font-size: 13.5px;
+            color: #d84315;
+            margin-top: 6px;
+        }}
+        .footer {{
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }}
+        @media print {{
+            .no-print {{ display: none; }}
+            body {{ padding: 0; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="no-print" style="background: #e8f5e9; border: 1px solid #a5d6a7; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #2e7d32; font-weight: bold; font-size: 14px;">🌸 Bản xem trước in PDF đã sẵn sàng!</span>
+        <button onclick="window.print()" style="background: #d81b60; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">🖨️ In hoặc Lưu về máy (Ctrl + P / ⌘ + P)</button>
+    </div>
+    <div class="header-box">
+        <div>
+            <h1 class="doc-title">🌸 {topic}</h1>
+            <div style="font-size: 12px; color: #666; margin-top: 4px;">Tài liệu Luyện đọc & Dịch nghĩa tiếng Nhật JLPT</div>
+        </div>
+        <div class="meta-tag">Cấp độ: {level}</div>
+    </div>
+    {body_items}
+    <div class="footer">
+        Trang web Luyện Đọc & Phân Tích Tiếng Nhật JLPT
+    </div>
+</body>
+</html>"""
+    return html_template
+
 if analyze_btn:
     if not api_key:
         st.error("⚠️ Vui lòng cấu hình Gemini API Key (trong Secrets hoặc thanh menu bên trái) để tiếp tục.")
@@ -318,7 +427,27 @@ if st.session_state.analysis_data and isinstance(st.session_state.analysis_data,
         "📖 Bài đọc & Dịch", "📝 Ngữ pháp", "📚 Từ vựng", "🈲 Hán tự (Kanji)", "❓ Câu hỏi JLPT (5 câu)"
     ])
     with tab_read:
-        show_furigana = st.toggle("🌸 Bật Furigana", value=False)
+        # Hàng công cụ: Bật Furigana & Tùy chọn Xuất PDF
+        ctrl_col1, ctrl_col2 = st.columns([1.2, 3.8])
+        with ctrl_col1:
+            show_furigana = st.toggle("🌸 Bật Furigana", value=False)
+        with ctrl_col2:
+            with st.popover("📄 Xuất file PDF bài đọc & bản dịch"):
+                st.markdown("#### ⚙️ Tùy chọn xuất PDF")
+                pdf_furigana_opt = st.radio(
+                    "Định dạng nội dung tiếng Nhật khi in/lưu PDF:",
+                    ["Kèm Furigana (phiên âm trên chữ Hán)", "Không kèm Furigana (chữ Kanji thuần)"],
+                    index=0
+                )
+                include_furi = True if "Kèm Furigana" in pdf_furigana_opt else False
+                pdf_html_content = generate_pdf_html(data, include_furigana=include_furi)
+                pdf_b64 = base64.b64encode(pdf_html_content.encode('utf-8')).decode('utf-8')
+                download_href = f'<a href="data:text/html;base64,{pdf_b64}" target="_blank" style="display: inline-block; background-color: #d81b60; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 8px;">🖨️ Mở trang In / Lưu PDF ngay</a>'
+                st.markdown(download_href, unsafe_allow_html=True)
+                st.caption("💡 *Bấm vào nút trên để mở trang in chuẩn A4, sau đó nhấn **Ctrl+P** (hoặc **Lưu dưới dạng PDF**) để tải về máy.*")
+
+        st.markdown("---")
+
         paragraphs = data.get("paragraphs", []) if isinstance(data.get("paragraphs"), list) else []
         for p in paragraphs:
             if isinstance(p, dict):
@@ -369,7 +498,7 @@ if st.session_state.analysis_data and isinstance(st.session_state.analysis_data,
     with tab_kanji:
         kanjis = data.get("kanji_list", []) if isinstance(data.get("kanji_list"), list) else []
         kanji_rows = [
-            {"Chữ Hán": k.get("kanji", ""), "Hán Việt": k.get("han_viet", ""), "Cấp độ": k.get("jlpt_level", ""), "Âm On": k.get("onyomi", ""), "Âm Kun": k.get("kunyomi", ""), "Ý nghĩa": k.get("meaning", "")}
+            {"Chữ Hán": k.get("kanji", ""), "Hán Việt": k.get("han_viet", ""), "Cấp độ": k.get("jlpt_level"), "Âm On": k.get("onyomi", ""), "Âm Kun": k.get("kunyomi", ""), "Ý nghĩa": k.get("meaning", "")}
             for k in kanjis if isinstance(k, dict)
         ]
         st.dataframe(kanji_rows, use_container_width=True)
