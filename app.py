@@ -5,8 +5,10 @@ import io
 import re
 import base64
 import asyncio
+import requests
+from datetime import datetime
 
-# Sử dụng edge-tts để tạo giọng đọc tự nhiên như phát thanh viên NHK (miễn phí, không cần key)
+# Thư viện đọc giọng NHK
 try:
     import edge_tts
     EDGE_TTS_AVAILABLE = True
@@ -20,10 +22,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Cấu hình CSS:
-# 1. Hợp nhất header trên cùng
-# 2. Thanh điều khiển Audio Sticky nổi ở mép dưới màn hình (Mobile & Desktop đều luôn nhìn thấy khi cuộn bài)
-# 3. Hiệu ứng cánh hoa rơi nhẹ
+# Cấu hình CSS
 st.markdown("""
 <style>
     /* Thanh công cụ và Header của Streamlit cùng chung 1 dải nền */
@@ -176,8 +175,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Lấy API Key từ Secrets hoặc Sidebar
+# Lấy API Key và Webhook URL từ Secrets hoặc Sidebar
 api_key = st.secrets.get("GEMINI_API_KEY", None)
+sheet_webhook_url = st.secrets.get("GOOGLE_SHEET_WEBHOOK_URL", "")
+
 if not api_key:
     api_key = st.sidebar.text_input("🔑 Nhập Gemini API Key của bạn:", type="password")
 
@@ -275,7 +276,6 @@ def clean_and_parse_json(raw_text):
         return json.loads(cleaned, strict=False)
 
 async def generate_nhk_voice(text):
-    # Sử dụng giọng phát thanh viên chuẩn NHK Tokyo (ja-JP-NanamiNeural)
     voice = "ja-JP-NanamiNeural"
     communicate = edge_tts.Communicate(text, voice)
     mp3_data = bytearray()
@@ -344,7 +344,7 @@ if st.session_state.analysis_data:
             st.markdown(f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch:</strong> {p.get('vietnamese_translation')}</div>", unsafe_allow_html=True)
             st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-        # THANH ĐIỀU KHIỂN ÂM THANH NỔI (Sticky Bottom Player) - Luôn hiển thị trên cả Mobile & PC khi cuộn bài đọc
+        # THANH ĐIỀU KHIỂN ÂM THANH NỔI (Sticky Bottom Player)
         if st.session_state.raw_audio_b64:
             st.markdown(f"""
             <div class="sticky-audio-bar">
@@ -436,7 +436,7 @@ if st.session_state.analysis_data:
     with aff_col2:
         st.markdown("👉 [Giáo trình tiếng Nhật tổng hợp & Từ vựng](https://shopee.vn)")
 
-# MỤC GÓP Ý CỦA NGƯỜI DÙNG
+# MỤC GÓP Ý CỦA NGƯỜI DÙNG (TỰ ĐỘNG GỬI VỀ GOOGLE SHEET)
 st.markdown("<br><hr>", unsafe_allow_html=True)
 with st.expander("💌 Góp ý & Phản hồi phát triển trang web"):
     st.write("Chúng tôi luôn lắng nghe ý kiến của bạn để hoàn thiện công cụ luyện đọc tiếng Nhật tốt hơn mỗi ngày!")
@@ -445,8 +445,21 @@ with st.expander("💌 Góp ý & Phản hồi phát triển trang web"):
         fb_type = st.selectbox("Loại góp ý:", ["Đề xuất tính năng mới", "Báo lỗi phân tích/AI", "Góp ý giao diện", "Khác"])
         fb_content = st.text_area("Nội dung góp ý chi tiết:", placeholder="Hãy nhập ý kiến của bạn tại đây...")
         submitted = st.form_submit_button("📩 Gửi góp ý")
+        
         if submitted:
             if fb_content.strip():
+                # Gửi dữ liệu về Google Sheets nếu có Webhook URL
+                if sheet_webhook_url:
+                    try:
+                        payload = {
+                            "time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                            "name": fb_name if fb_name.strip() else "Ẩn danh",
+                            "type": fb_type,
+                            "content": fb_content
+                        }
+                        requests.post(sheet_webhook_url, json=payload, timeout=5)
+                    except Exception:
+                        pass # Không làm gián đoạn trải nghiệm người dùng nếu mạng chậm
                 st.success("🌸 Cảm ơn bạn rất nhiều! Góp ý của bạn đã được ghi nhận thành công.")
             else:
                 st.warning("⚠️ Vui lòng nhập nội dung góp ý trước khi bấm gửi.")
