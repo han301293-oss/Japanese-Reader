@@ -4,12 +4,14 @@ import json
 import io
 import re
 import base64
+import asyncio
 
+# Sử dụng edge-tts để tạo giọng đọc tự nhiên như phát thanh viên NHK (miễn phí, không cần key)
 try:
-    from gtts import gTTS
-    TTS_AVAILABLE = True
+    import edge_tts
+    EDGE_TTS_AVAILABLE = True
 except ImportError:
-    TTS_AVAILABLE = False
+    EDGE_TTS_AVAILABLE = False
 
 st.set_page_config(
     page_title="Luyện Đọc & Phân Tích Tiếng Nhật JLPT",
@@ -18,7 +20,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Cấu hình CSS: Hợp nhất nền tiêu đề và thanh công cụ Streamlit trên cùng thành 1 dải mượt mà
+# Cấu hình CSS:
+# 1. Hợp nhất header trên cùng
+# 2. Thanh điều khiển Audio Sticky nổi ở mép dưới màn hình (Mobile & Desktop đều luôn nhìn thấy khi cuộn bài)
+# 3. Hiệu ứng cánh hoa rơi nhẹ
 st.markdown("""
 <style>
     /* Thanh công cụ và Header của Streamlit cùng chung 1 dải nền */
@@ -62,10 +67,10 @@ st.markdown("""
         .app-sub-title { color: #bbb !important; }
     }
 
-    /* Đệm trang để không bị che bởi dải Header */
+    /* Đệm trang để không bị che bởi Header và Sticky Audio Bar */
     .block-container {
         padding-top: 4.2rem !important;
-        padding-bottom: 3rem !important;
+        padding-bottom: 7rem !important;
     }
 
     /* Hiệu ứng cánh hoa anh đào rơi */
@@ -124,6 +129,32 @@ st.markdown("""
             color: #ffe0b2;
         }
     }
+
+    /* Thanh điều khiển Audio cố định ở đáy màn hình */
+    .sticky-audio-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, rgba(255, 245, 248, 0.98), rgba(255, 235, 242, 0.98));
+        border-top: 2px solid #ffccd5;
+        padding: 10px 16px;
+        box-shadow: 0 -4px 18px rgba(255, 182, 193, 0.35);
+        z-index: 99990;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        backdrop-filter: blur(10px);
+    }
+    @media (prefers-color-scheme: dark) {
+        .sticky-audio-bar {
+            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(25, 10, 20, 0.98));
+            border-top: 2px solid #ff758c;
+            box-shadow: 0 -4px 18px rgba(255, 117, 140, 0.25);
+        }
+    }
 </style>
 
 <!-- Hiệu ứng cánh hoa anh đào rơi -->
@@ -170,7 +201,16 @@ analyze_btn = st.button("🚀 Phân tích bài đọc", type="primary", use_cont
 SYSTEM_PROMPT = """
 Bạn là một chuyên gia ngôn ngữ học và giáo viên luyện thi tiếng Nhật JLPT cao cấp.
 Nhiệm vụ của bạn là tiếp nhận văn bản tiếng Nhật do người dùng cung cấp, phân tích chuyên sâu và trả về kết quả DUY NHẤT dưới định dạng JSON theo schema sau (không thêm bất kỳ lời dẫn nào ngoài JSON).
-LƯU Ý: Phải tạo CHÍNH XÁC ĐỦ 5 CÂU HỎI trắc nghiệm đọc hiểu (question_number từ 1 đến 5). Tuyệt đối không để ký tự xuống dòng chưa escape trong chuỗi JSON.
+
+QUY TẮC LỌC VÀ TRÍCH XUẤT QUAN TRỌNG:
+1. Đánh giá cấp độ JLPT tổng thể của bài đọc (estimated_jlpt_level: N5, N4, N3, N2 hoặc N1).
+2. LỌC NGỮ PHÁP, TỪ VỰNG, KANJI THEO NGUYÊN TẮC:
+   - Nếu bài đọc có trình độ tương đương N3 trở lên (N3, N2, N1): CHỈ liệt kê các điểm ngữ pháp, từ vựng và Kanji từ cấp độ N3 trở lên (gồm N3, N2, N1). Bỏ qua các từ/ngữ pháp quá cơ bản của N5, N4.
+   - Nếu bài đọc có trình độ tương đương N5, N4: Liệt kê các điểm ngữ pháp, từ vựng và Kanji từ cấp độ N5 trở lên (N5, N4, N3...).
+3. GIẢI THÍCH NGỮ PHÁP: Trong trường `usage_in_text`, sau câu tiếng Nhật trích ra từ bài, PHẢI kèm theo bản dịch nghĩa tiếng Việt đặt trong dấu ngoặc đơn `( )`. Ví dụ: `コーヒーを飲みながら本を読みます (Vừa uống cà phê vừa đọc sách)`.
+4. BÀI TẬP: Tạo CHÍNH XÁC ĐỦ 5 CÂU HỎI trắc nghiệm đọc hiểu (question_number từ 1 đến 5). Tuyệt đối không để ký tự xuống dòng chưa escape trong chuỗi JSON.
+
+JSON Schema:
 {
   "summary": { "estimated_jlpt_level": "N3", "topic": "Chủ đề bài đọc", "word_count": 185 },
   "paragraphs": [
@@ -182,7 +222,13 @@ LƯU Ý: Phải tạo CHÍNH XÁC ĐỦ 5 CÂU HỎI trắc nghiệm đọc hi�
     }
   ],
   "grammar_analysis": [
-    { "pattern": "mẫu ngữ pháp", "jlpt_level": "N3", "meaning": "ý nghĩa ngữ pháp", "usage_in_text": "câu xuất hiện trong bài", "explanation": "giải thích cách dùng chi tiết" }
+    {
+      "pattern": "mẫu ngữ pháp",
+      "jlpt_level": "N3",
+      "meaning": "ý nghĩa ngữ pháp",
+      "usage_in_text": "câu xuất hiện trong bài (nghĩa tiếng Việt của câu trong ngữ cảnh)",
+      "explanation": "giải thích cách dùng chi tiết"
+    }
   ],
   "vocabulary_list": [
     { "word": "từ vựng", "reading": "cách đọc", "part_of_speech": "từ loại", "jlpt_level": "N3", "vietnamese_meaning": "nghĩa tiếng Việt" }
@@ -228,13 +274,23 @@ def clean_and_parse_json(raw_text):
         cleaned = re.sub(r'[\x00-\x1f\x7f-\x9f]', lambda m: ' ' if m.group(0) not in ['\n', '\r', '\t'] else m.group(0), text)
         return json.loads(cleaned, strict=False)
 
+async def generate_nhk_voice(text):
+    # Sử dụng giọng phát thanh viên chuẩn NHK Tokyo (ja-JP-NanamiNeural)
+    voice = "ja-JP-NanamiNeural"
+    communicate = edge_tts.Communicate(text, voice)
+    mp3_data = bytearray()
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            mp3_data.extend(chunk["data"])
+    return bytes(mp3_data)
+
 if analyze_btn:
     if not api_key:
         st.error("⚠️ Vui lòng cấu hình Gemini API Key (trong Secrets hoặc thanh menu bên trái) để tiếp tục.")
     elif not user_text.strip():
         st.warning("⚠️ Vui lòng dán nội dung bài đọc trước khi bấm phân tích.")
     else:
-        with st.spinner("🌸 AI đang phân tích bài đọc, tạo 5 câu hỏi JLPT và file âm thanh..."):
+        with st.spinner("🌸 AI đang phân tích bài đọc, tạo giọng đọc phát thanh viên NHK và 5 câu hỏi JLPT..."):
             try:
                 genai.configure(api_key=api_key)
                 model = genai.GenerativeModel(
@@ -245,16 +301,15 @@ if analyze_btn:
                 st.session_state.analysis_data = clean_and_parse_json(response.text)
                 st.session_state.current_user_text = user_text
 
-                # Tạo âm thanh đọc AI và lưu dạng base64
-                if TTS_AVAILABLE:
+                # Tạo giọng đọc phát thanh viên chất lượng cao bằng edge-tts
+                if EDGE_TTS_AVAILABLE:
                     try:
-                        tts = gTTS(text=user_text, lang='ja', slow=False)
-                        fp = io.BytesIO()
-                        tts.write_to_fp(fp)
-                        fp.seek(0)
-                        st.session_state.raw_audio_b64 = base64.b64encode(fp.read()).decode()
+                        audio_data = asyncio.run(generate_nhk_voice(user_text))
+                        st.session_state.raw_audio_b64 = base64.b64encode(audio_data).decode()
                     except Exception:
                         st.session_state.raw_audio_b64 = None
+                else:
+                    st.session_state.raw_audio_b64 = None
 
             except Exception as e:
                 st.error(f"Đã xảy ra lỗi khi gọi AI: {str(e)}")
@@ -277,36 +332,7 @@ if st.session_state.analysis_data:
 
     # Tab 1: Bài đọc & Dịch
     with tab_read:
-        st.markdown("#### 🎧 Luyện nghe bài đọc (Giọng AI):")
-        
-        # Hàng phát Audio + Chọn tốc độ (0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x)
-        aud_col, spd_col = st.columns([3.5, 1.5])
-        with spd_col:
-            speed_val = st.selectbox(
-                "⚡ Tốc độ phát:",
-                [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
-                index=2,
-                format_func=lambda x: f"x{x}"
-            )
-
-        with aud_col:
-            if st.session_state.raw_audio_b64:
-                audio_html = f"""
-                <audio id="custom_audio" controls style="width: 100%; height: 45px;">
-                    <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
-                </audio>
-                <script>
-                    var audio = document.getElementById('custom_audio');
-                    if (audio) {{ audio.playbackRate = {speed_val}; }}
-                </script>
-                """
-                st.components.v1.html(audio_html, height=55)
-            else:
-                st.info("💡 Không thể tải file âm thanh cho bài đọc này.")
-
-        st.markdown("---")
-        
-        # Công tắc bật tắt Furigana ngay bên trên phần đọc dịch (mặc định tắt)
+        # Công tắc bật tắt Furigana ngay bên trên bài đọc
         show_furigana = st.toggle("🌸 Bật Furigana", value=False)
 
         for p in data.get("paragraphs", []):
@@ -318,12 +344,34 @@ if st.session_state.analysis_data:
             st.markdown(f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch:</strong> {p.get('vietnamese_translation')}</div>", unsafe_allow_html=True)
             st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
+        # THANH ĐIỀU KHIỂN ÂM THANH NỔI (Sticky Bottom Player) - Luôn hiển thị trên cả Mobile & PC khi cuộn bài đọc
+        if st.session_state.raw_audio_b64:
+            st.markdown(f"""
+            <div class="sticky-audio-bar">
+                <span style="font-size: 0.9rem; font-weight: 700; color: #d81b60;">🎙️ Giọng đọc NHK Tokyo:</span>
+                <audio id="floating_player" controls style="height: 38px; max-width: 400px; flex-grow: 1;">
+                    <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
+                </audio>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.82rem; font-weight: 600;">⚡ Tốc độ:</span>
+                    <select id="speed_select" onchange="document.getElementById('floating_player').playbackRate = this.value;" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600;">
+                        <option value="0.5">x0.5</option>
+                        <option value="0.75">x0.75</option>
+                        <option value="1.0" selected>x1.0</option>
+                        <option value="1.25">x1.25</option>
+                        <option value="1.5">x1.5</option>
+                        <option value="2.0">x2.0</option>
+                    </select>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
     # Tab 2: Ngữ pháp
     with tab_grammar:
         for g in data.get("grammar_analysis", []):
             with st.expander(f"📌 {g.get('pattern')} [{g.get('jlpt_level')}] - {g.get('meaning')}"):
                 st.markdown(f"- **Ngữ cảnh trong bài:** `{g.get('usage_in_text')}`")
-                st.markdown(f"- **Giải thích:** {g.get('explanation')}")
+                st.markdown(f"- **Giải thích chi tiết:** {g.get('explanation')}")
 
     # Tab 3: Từ vựng
     with tab_vocab:
