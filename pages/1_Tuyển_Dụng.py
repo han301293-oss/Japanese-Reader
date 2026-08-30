@@ -3,7 +3,7 @@ import os
 import streamlit as st
 
 st.set_page_config(
-    page_title="Thông Tin Tuyển Dụng - JLPT Reader",
+    page_title="Thông Tin Tuyển Dụng - DAIWAHOUSE VIỆT NAM",
     page_icon="🔥",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -22,6 +22,18 @@ st.markdown(
     box-shadow: 0 4px 20px rgba(216, 27, 96, 0.08);
     font-family: 'Segoe UI', Arial, sans-serif;
 }
+.company-badge {
+    display: inline-block;
+    background: #ffebee;
+    color: #d81b60;
+    font-size: 0.88rem;
+    font-weight: 800;
+    padding: 4px 14px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    border: 1px solid #ffccd5;
+}
 .job-header {
     text-align: center;
     border-bottom: 2px dashed #ff80ab;
@@ -30,9 +42,10 @@ st.markdown(
 }
 .job-title {
     color: #d81b60;
-    font-size: 1.6rem;
+    font-size: 1.45rem;
     font-weight: 800;
     margin-bottom: 8px;
+    line-height: 1.35;
 }
 .job-sub {
     color: #555;
@@ -56,7 +69,7 @@ st.markdown(
 }
 .section-head {
     color: #d81b60;
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     font-weight: 700;
     margin: 26px 0 14px 0;
 }
@@ -86,6 +99,7 @@ st.markdown(
     font-size: 0.88rem;
     color: #444;
     line-height: 1.5;
+    margin: 0;
 }
 .benefits-grid {
     display: grid;
@@ -126,6 +140,14 @@ st.markdown(
     padding: 6px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+.contact-link {
+    color: #0d47a1;
+    font-weight: 600;
+    text-decoration: none;
+}
+.contact-link:hover {
+    text-decoration: underline;
+}
 .back-btn-link {
     display: inline-block;
     margin-bottom: 15px;
@@ -155,8 +177,9 @@ html_body = f"""
 
 <div class="job-page-container">
 <div class="job-header">
-<h1 class="job-title">🔥 N3+ BẮT ĐẦU SỰ NGHIỆP ĐÚNG CHUYÊN MÔN</h1>
-<p class="job-sub">Bạn học Kiến trúc / Xây dựng, có tiếng Nhật N3 trở lên, đang tìm một công việc không yêu cầu kinh nghiệm nhưng được đào tạo bài bản?</p>
+<div class="company-badge">🏢 DAIWAHOUSE VIỆT NAM</div>
+<h1 class="job-title">🔥 TUYỂN DỤNG 16 NHÂN VIÊN TIẾNG NHẬT N3+<br><span style="font-size: 1.15rem; font-weight: 700;">(Không yêu cầu kinh nghiệm)</span></h1>
+<p class="job-sub">Bạn học Kiến trúc / Xây dựng hoặc 1 một chuyên ngành kĩ thuật khác, có tiếng Nhật N3 trở lên, đang tìm một công việc không yêu cầu kinh nghiệm nhưng được đào tạo bài bản?</p>
 <div class="badge-pill-list">
 <span class="badge-pill">🎯 16 Vị trí</span>
 <span class="badge-pill">📍 Đống Đa, Hà Nội</span>
@@ -164,7 +187,7 @@ html_body = f"""
 </div>
 </div>
 
-<div class="section-head">📌 4 Hướng Công Việc Theo Thế Mạnh</div>
+<div class="section-head">📌 Vị trí công việc đang tuyển dụng:</div>
 <div class="job-grid-2x2">
 <div class="job-item-card">
 <h4>🏠 THIẾT KẾ KIẾN TRÚC NHÀ Ở (09 vị trí)</h4>
@@ -205,7 +228,7 @@ html_body = f"""
 <li>✅ Không yêu cầu kinh nghiệm</li>
 <li>✅ Tốt nghiệp ĐH / CĐ / Senmon</li>
 <li>✅ Được đào tạo bài bản sau khi vào làm</li>
-<li>✅ Thưởng tháng 13 + thưởng đặc biệt cuối năm</li>
+<li>✅ Thưởng tháng 13 + thưởng đặc biệt cuối năm (1-2 tháng lương)</li>
 <li>✅ Thưởng kinh doanh + lương OT đầy đủ</li>
 <li>✅ Hỗ trợ chi phí học tiếng Nhật</li>
 <li>✅ Cơ hội đào tạo / công tác tại Nhật Bản</li>
@@ -217,7 +240,8 @@ html_body = f"""
 <img src="{qr_b64_src}" alt="QR Zalo Hân Nguyễn">
 <div style="flex: 1;">
 <h3 style="color: #d81b60; margin: 0 0 6px 0;">📲 Liên hệ: Hân Nguyễn (HR)</h3>
-<p style="font-size: 0.9rem; color: #555; margin: 0 0 8px 0;">Quét mã QR Zalo bên cạnh để gửi CV hoặc nhận tư vấn chi tiết về từng vị trí.</p>
+<p style="font-size: 0.9rem; color: #444; margin: 0 0 6px 0;">📧 Email: <a href="mailto:nguyenthihan@daiwahouse.vn" class="contact-link">nguyenthihan@daiwahouse.vn</a></p>
+<p style="font-size: 0.88rem; color: #555; margin: 0 0 8px 0;">Quét mã QR Zalo bên cạnh để gửi CV hoặc nhận tư vấn chi tiết về từng vị trí.</p>
 <div style="color: #c2185b; font-weight: bold; font-size: 0.95rem;">⏰ Hạn nhận CV: 11/09/2026</div>
 <div style="color: #c2185b; font-weight: bold; font-size: 0.95rem;">🚀 Dự kiến đi làm: Đầu tháng 10/2026</div>
 </div>
