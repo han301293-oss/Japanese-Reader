@@ -1,4 +1,1 @@
-streamlit
-google-generativeai
-edge-tts
-requests
+pip install streamlit google-generativeai edge-tts pykakasi requests
