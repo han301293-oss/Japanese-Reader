@@ -172,7 +172,7 @@ st.markdown(
     }
     @media (prefers-color-scheme: dark) {
         .sticky-audio-bar {
-            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(255, 117, 140, 0.25));
+            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(255, 10, 20, 0.98));
             border-top: 2px solid #ff758c;
             box-shadow: 0 -4px 18px rgba(255, 117, 140, 0.25);
         }
@@ -574,19 +574,4 @@ if analyze_btn:
             try:
                 with ThreadPoolExecutor(max_workers=2) as executor:
                     future_ai = executor.submit(fetch_gemini_analysis, user_text, api_key)
-                    future_audio = executor.submit(fetch_nhk_audio, user_text)
-
-                    result = future_ai.result()
-                    audio_data = future_audio.result()
-
-                if not result:
-                    st.error("⚠️ AI trả về dữ liệu chưa chuẩn cấu trúc. Vui lòng bấm phân tích lại.")
-                else:
-                    if "paragraphs" in result and isinstance(result["paragraphs"], list):
-                        for p in result["paragraphs"]:
-                            if isinstance(p, dict):
-                                orig = p.get("original_text", "")
-                                if KAKASI_AVAILABLE:
-                                    p["furigana_html"] = convert_to_furigana_html(orig)
-
-                    st.session_state.analysis_data = result
+                    future_audio = executor.submit(
