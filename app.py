@@ -172,7 +172,7 @@ st.markdown(
     }
     @media (prefers-color-scheme: dark) {
         .sticky-audio-bar {
-            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(25, 10, 20, 0.98));
+            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(255, 10, 20, 0.98));
             border-top: 2px solid #ff758c;
             box-shadow: 0 -4px 18px rgba(255, 117, 140, 0.25);
         }
@@ -430,7 +430,7 @@ Nhiệm vụ: Phân tích bài đọc ({passage_type}) và trả về kết qu�
 YÊU CẦU PHÂN TÍCH:
 1. DỊCH THUẬT: Chia văn bản thành các đoạn văn ngắn logic, dịch tự nhiên, chuẩn xác sang tiếng Việt.
 2. TỪ VỰNG: Trích xuất 8 đến 12 từ/cụm từ then chốt (kèm Kana, cấp độ, nghĩa ngữ cảnh).
-3. HÁN TỰ (KANJI): Trích xuất 10 đến 18 chữ Hán quan trọng nhất (kèm Âm Hán, On/Kun, nghĩa). Với bài ngắn, trích xuất tối đa các Kanji có trong bài.
+3. HÁN TỰ (KANJI): Trích xuất 10 đến 20 chữ Hán quan trọng nhất (kèm Âm Hán, On/Kun, nghĩa). Với bài ngắn, trích xuất tối đa các Kanji có trong bài.
 4. NGỮ PHÁP: 3 đến 5 mẫu ngữ pháp cốt lõi kèm ngữ cảnh trong bài và giải thích ngắn gọn.
 5. ĐỀ THI JLPT: Tạo đúng {total_questions} câu hỏi ({num_intent} ý đồ tác giả, {num_vocab} từ vựng/kanji, {num_grammar} ngữ pháp), 4 phương án A/B/C/D kèm giải thích ngắn gọn vì sao đáp án đúng và phân tích bẫy các câu sai.
 
@@ -688,16 +688,205 @@ if st.session_state.analysis_data and isinstance(
                 )
 
         if st.session_state.raw_audio_b64:
-            st.markdown(
-                f"""
-            <div class="sticky-audio-bar">
-                <span style="font-size: 0.9rem; font-weight: 700; color: #d81b60;">🎙️ Giọng đọc chuẩn Tokyo (NHK):</span>
-                <audio id="floating_player" controls style="height: 38px; max-width: 400px; flex-grow: 1;">
-                    <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
-                </audio>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 0.82rem; font-weight: 600;">⚡ Tốc độ:</span>
-                    <select id="speed_select" onchange="document.getElementById('floating_player').playbackRate = this.value;" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600; cursor: pointer;">
-                        <option value="0.5">x0.5 (Rất chậm)</option>
-                        <option value="0.75">x0.75 (Chậm)</option>
-                        <option value
+            audio_html = (
+                '<div class="sticky-audio-bar">'
+                '<span style="font-size: 0.9rem; font-weight: 700; color: #d81b60;">🎙️ Giọng đọc chuẩn Tokyo (NHK):</span>'
+                f'<audio id="floating_player" controls style="height: 38px; max-width: 400px; flex-grow: 1;">'
+                f'<source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">'
+                '</audio>'
+                '<div style="display: flex; align-items: center; gap: 6px;">'
+                '<span style="font-size: 0.82rem; font-weight: 600;">⚡ Tốc độ:</span>'
+                '<select id="speed_select" onchange="document.getElementById(\'floating_player\').playbackRate = this.value;" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600; cursor: pointer;">'
+                '<option value="0.5">x0.5 (Rất chậm)</option>'
+                '<option value="0.75">x0.75 (Chậm)</option>'
+                '<option value="1.0" selected>x1.0 (Chuẩn)</option>'
+                '<option value="1.25">x1.25 (Nhanh vừa)</option>'
+                '<option value="1.5">x1.5 (Nhanh)</option>'
+                '<option value="1.75">x1.75 (Rất nhanh)</option>'
+                '<option value="2.0">x2.0 (Cực nhanh)</option>'
+                '</select>'
+                '</div>'
+                '</div>'
+            )
+            st.markdown(audio_html, unsafe_allow_html=True)
+
+    with tab_grammar:
+        grammars = (
+            data.get("grammar_analysis", [])
+            if isinstance(data.get("grammar_analysis"), list)
+            else []
+        )
+        if not grammars:
+            st.info("Không có mẫu ngữ pháp đặc biệt nào.")
+        for g in grammars:
+            if isinstance(g, dict):
+                p_text = g.get("pattern", "")
+                l_text = g.get("jlpt_level", "")
+                m_text = g.get("meaning", "")
+                exp_title = f"📌 {p_text} [{l_text}] — {m_text}"
+                with st.expander(exp_title, expanded=True):
+                    st.markdown(
+                        f"- **Ngữ cảnh trong bài:** `{g.get('usage_in_text', '')}`"
+                    )
+                    st.markdown(
+                        f"- **Giải thích chi tiết:** {g.get('explanation', '')}"
+                    )
+
+    with tab_vocab:
+        vocabs = (
+            data.get("vocabulary_list", [])
+            if isinstance(data.get("vocabulary_list"), list)
+            else []
+        )
+        if vocabs:
+            vocab_rows = [
+                {
+                    "Từ vựng / Cụm từ": v.get("word", ""),
+                    "Cách đọc (Kana)": v.get("reading", ""),
+                    "Cấp độ": v.get("jlpt_level", ""),
+                    "Từ loại": v.get("part_of_speech", ""),
+                    "Ý nghĩa trong bài": v.get("vietnamese_meaning", ""),
+                }
+                for v in vocabs
+                if isinstance(v, dict)
+            ]
+            st.dataframe(vocab_rows, use_container_width=True, hide_index=True)
+        else:
+            st.info("Chưa có danh sách từ vựng.")
+
+    with tab_kanji:
+        kanjis = (
+            data.get("kanji_list", [])
+            if isinstance(data.get("kanji_list"), list)
+            else []
+        )
+        if kanjis:
+            kanji_rows = [
+                {
+                    "Hán tự": k.get("kanji", ""),
+                    "Âm Hán Việt": k.get("han_viet", ""),
+                    "Cấp độ": k.get("jlpt_level", ""),
+                    "Âm On": k.get("onyomi", ""),
+                    "Âm Kun": k.get("kunyomi", ""),
+                    "Ý nghĩa": k.get("meaning", ""),
+                }
+                for k in kanjis
+                if isinstance(k, dict)
+            ]
+            st.dataframe(kanji_rows, use_container_width=True, hide_index=True)
+        else:
+            st.info("Chưa có danh sách Hán tự.")
+
+    with tab_quiz:
+        st.markdown(f"### ✍️ Đề thi thử JLPT ({len(questions)} câu hỏi)")
+        for idx, q in enumerate(questions):
+            if isinstance(q, dict):
+                q_num = q.get("question_number", idx + 1)
+                category = q.get("category", "Đọc hiểu")
+
+                badge_class = "badge-author"
+                if "từ vựng" in category.lower() or "kanji" in category.lower():
+                    badge_class = "badge-vocab"
+                elif "ngữ pháp" in category.lower():
+                    badge_class = "badge-grammar"
+
+                st.markdown(
+                    f"<span class='badge-category {badge_class}'>🏷️ {category}</span>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"#### Câu {q_num}: {q.get('question_text', '')}"
+                )
+                st.caption(f"*(Dịch nghĩa: {q.get('question_vietnamese', '')})*")
+
+                opts = (
+                    q.get("options", {})
+                    if isinstance(q.get("options"), dict)
+                    else {}
+                )
+                choice_keys = [k for k in ["A", "B", "C", "D"] if k in opts]
+
+                user_choice = st.radio(
+                    f"Chọn phương án đúng cho câu {q_num}:",
+                    options=choice_keys,
+                    format_func=lambda x: f"{x}. {opts.get(x, '')}",
+                    key=f"quiz_radio_{q_num}",
+                    index=None,
+                )
+
+                correct_ans = q.get("correct_answer", "A")
+                opt_analysis = (
+                    q.get("option_analysis", {})
+                    if isinstance(q.get("option_analysis"), dict)
+                    else {}
+                )
+
+                if user_choice is not None:
+                    if user_choice == correct_ans:
+                        st.success(
+                            f"🎉 **Chính xác!** Đáp án đúng là **{correct_ans}**."
+                        )
+                    else:
+                        st.error(
+                            f"❌ **Chưa chính xác!** Bạn chọn **{user_choice}**, đáp án chuẩn là **{correct_ans}**."
+                        )
+
+                    st.markdown(
+                        "**🔍 Phân tích chi tiết từng phương án & bẫy tư duy:**"
+                    )
+                    for opt_k in choice_keys:
+                        explanation_text = opt_analysis.get(
+                            opt_k, "Chưa có phân tích."
+                        )
+                        if opt_k == correct_ans:
+                            st.markdown(
+                                f"- ✅ **Phương án {opt_k} (ĐÚNG):** {explanation_text}"
+                            )
+                        else:
+                            st.markdown(
+                                f"- ❌ **Phương án {opt_k} (SAI):** {explanation_text}"
+                            )
+                st.markdown("---")
+
+# ==============================================================================
+# MỤC 1: FORM PHẢN HỒI (LUÔN HIỂN THỊ Ở CHÂN TRANG)
+# ==============================================================================
+st.markdown("<br><hr>", unsafe_allow_html=True)
+with st.expander("💌 Góp ý & Báo lỗi"):
+    with st.form("feedback_form", clear_on_submit=True):
+        fb_name = st.text_input("Tên hoặc Email (không bắt buộc):")
+        fb_type = st.selectbox(
+            "Loại góp ý:",
+            [
+                "Báo lỗi Furigana / AI",
+                "Lỗi giọng đọc",
+                "Đề xuất tính năng mới",
+                "Khác",
+            ],
+        )
+        fb_content = st.text_area(
+            "Nội dung:", placeholder="Mô tả ý kiến của bạn..."
+        )
+        submitted = st.form_submit_button("📩 Gửi ý kiến")
+        if submitted and fb_content.strip():
+            if sheet_webhook_url:
+                try:
+                    payload = {
+                        "time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                        "name": fb_name.strip() if fb_name.strip() else "Ẩn danh",
+                        "type": fb_type,
+                        "content": fb_content,
+                    }
+                    requests.post(sheet_webhook_url, json=payload, timeout=5)
+                except Exception:
+                    pass
+            st.success(
+                "🌸 Cảm ơn bạn! Ý kiến đóng góp đã được gửi thành công."
+            )
+
+# ==============================================================================
+# MỤC 2: NÚT TUYỂN DỤNG ĐIỀU HƯỚNG TỚI TRANG CON CỦA STREAMLIT
+# ==============================================================================
+st.markdown(
+    """
+    <a href="/Tuyển_Dụng" target="_blank" rel="noopener noreferrer" class="recruitment-link-
