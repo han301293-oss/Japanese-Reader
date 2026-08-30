@@ -165,7 +165,7 @@ rt {
 }
 @media (prefers-color-scheme: dark) {
     .sticky-audio-bar {
-        background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(25, 10, 20, 0.98));
+        background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(255, 10, 20, 0.98));
         border-top: 2px solid #ff758c;
         box-shadow: 0 -4px 18px rgba(255, 117, 140, 0.25);
     }
@@ -592,112 +592,4 @@ if analyze_btn:
                     audio_data = future_audio.result()
 
                 if not result:
-                    st.error("⚠️ AI trả về dữ liệu chưa chuẩn cấu trúc. Vui lòng bấm phân tích lại.")
-                else:
-                    if "paragraphs" in result and isinstance(result["paragraphs"], list):
-                        for p in result["paragraphs"]:
-                            if isinstance(p, dict):
-                                orig = p.get("original_text", "")
-                                p["furigana_html"] = convert_to_furigana_html(orig) if KAKASI_AVAILABLE else orig
-
-                    st.session_state.analysis_data = result
-                    st.session_state.current_user_text = user_text
-
-                if audio_data:
-                    st.session_state.raw_audio_b64 = base64.b64encode(audio_data).decode()
-                else:
-                    st.session_state.raw_audio_b64 = None
-
-            except Exception as e:
-                st.error(f"Đã xảy ra lỗi: {str(e)}")
-
-# ==============================================================================
-# HIỂN THỊ KẾT QUẢ PHÂN TÍCH
-# ==============================================================================
-if st.session_state.analysis_data and isinstance(st.session_state.analysis_data, dict):
-    data = st.session_state.analysis_data
-    
-    raw_summary = data.get("summary")
-    summary_data = raw_summary if isinstance(raw_summary, dict) else {}
-    
-    raw_questions = data.get("jlpt_practice_questions")
-    questions = raw_questions if isinstance(raw_questions, list) else []
-
-    st.success("🎉 Đã phân tích thành công!")
-    sum_col1, sum_col2, sum_col3 = st.columns(3)
-    sum_col1.info(f"🏷️ **Cấp độ ước tính:** {summary_data.get('estimated_jlpt_level', 'N/A')}")
-    sum_col2.info(f"📖 **Chủ đề:** {summary_data.get('topic', 'Chung')}")
-    sum_col3.info(f"📊 **Đề thi:** {len(questions)} câu hỏi JLPT")
-
-    tab_read, tab_grammar, tab_vocab, tab_kanji, tab_quiz = st.tabs([
-        "📖 Bài đọc & Dịch",
-        "📝 Ngữ pháp trọng tâm",
-        "📚 Từ vựng then chốt",
-        "🈲 Hán tự (Kanji)",
-        f"❓ Đề thi JLPT ({len(questions)} câu)",
-    ])
-
-    with tab_read:
-        ctrl_col1, ctrl_col2 = st.columns([1.2, 3.8])
-        with ctrl_col1:
-            show_furigana = st.toggle("🌸 Bật Furigana", value=True)
-        with ctrl_col2:
-            docx_file = generate_docx_file(data)
-            topic_slug = re.sub(r"[^\w\s-]", "", summary_data.get("topic", "BaiDoc")).strip()
-            topic_slug = re.sub(r"[-\s]+", "_", topic_slug)
-            st.download_button(
-                label="📥 Tải bài đọc & bản dịch (.docx / Word)",
-                data=docx_file,
-                file_name=f"JLPT_Reading_{topic_slug}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                type="secondary",
-            )
-
-        st.markdown("---")
-
-        raw_paras = data.get("paragraphs")
-        paragraphs = raw_paras if isinstance(raw_paras, list) else []
-        for p in paragraphs:
-            if isinstance(p, dict):
-                orig_text = p.get("original_text", "")
-                
-                if show_furigana:
-                    furi_text = p.get("furigana_html")
-                    if not furi_text or furi_text == orig_text:
-                        furi_text = convert_to_furigana_html(orig_text) if KAKASI_AVAILABLE else orig_text
-                    
-                    st.markdown(f"<div>{furi_text}</div>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<div class='plain-jp-text'>{orig_text}</div>", unsafe_allow_html=True)
-                
-                st.markdown(
-                    f"<div class='vi-translation-box'>🇻🇳 <strong>Dịch nghĩa:</strong> {p.get('vietnamese_translation', '')}</div>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
-
-        if st.session_state.raw_audio_b64:
-            st.markdown(
-                AUDIO_BAR_TEMPLATE.format(audio_b64=st.session_state.raw_audio_b64),
-                unsafe_allow_html=True,
-            )
-
-    with tab_grammar:
-        raw_grammars = data.get("grammar_analysis")
-        grammars = raw_grammars if isinstance(raw_grammars, list) else []
-        if not grammars:
-            st.info("Không có mẫu ngữ pháp đặc biệt nào.")
-        for g in grammars:
-            if isinstance(g, dict):
-                p_text = g.get("pattern", "")
-                l_text = g.get("jlpt_level", "")
-                m_text = g.get("meaning", "")
-                exp_title = f"📌 {p_text} [{l_text}] — {m_text}"
-                with st.expander(exp_title, expanded=True):
-                    st.markdown(f"- **Ngữ cảnh trong bài:** `{g.get('usage_in_text', '')}`")
-                    st.markdown(f"- **Giải thích chi tiết:** {g.get('explanation', '')}")
-
-    with tab_vocab:
-        raw_vocabs = data.get("vocabulary_list")
-        vocabs = raw_vocabs if isinstance(raw_vocabs, list) else []
-        if
+                    st.error("⚠️ AI trả về dữ liệu chưa chuẩn cấu trúc. V
