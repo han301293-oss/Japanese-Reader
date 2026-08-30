@@ -3,3 +3,4 @@ google-generativeai
 edge-tts
 pykakasi==2.2.1
 requests
+python-docx
