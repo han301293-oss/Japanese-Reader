@@ -3,7 +3,6 @@ import base64
 from datetime import datetime
 import io
 import json
-import os
 import re
 import google.generativeai as genai
 import requests
@@ -170,7 +169,7 @@ st.markdown(
     }
     @media (prefers-color-scheme: dark) {
         .sticky-audio-bar {
-            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(25, 10, 20, 0.98));
+            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(255, 117, 140, 0.25));
             border-top: 2px solid #ff758c;
             box-shadow: 0 -4px 18px rgba(255, 117, 140, 0.25);
         }
@@ -187,6 +186,53 @@ st.markdown(
     .badge-author { background-color: #e3f2fd; color: #1565c0; }
     .badge-vocab { background-color: #f3e5f5; color: #7b1fa2; }
     .badge-grammar { background-color: #e8f5e9; color: #2e7d32; }
+
+    /* Thanh tuyển dụng mở Tab mới */
+    .recruitment-link-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 14px;
+        padding: 14px 20px;
+        background: linear-gradient(90deg, #fff2f5 0%, #ffffff 100%);
+        border: 1.5px solid #ff80ab;
+        border-radius: 10px;
+        text-decoration: none !important;
+        box-shadow: 0 3px 12px rgba(216, 27, 96, 0.08);
+        transition: all 0.25s ease;
+    }
+    .recruitment-link-card:hover {
+        border-color: #d81b60;
+        background: linear-gradient(90deg, #ffebee 0%, #fff7f9 100%);
+        box-shadow: 0 4px 16px rgba(216, 27, 96, 0.16);
+        transform: translateY(-2px);
+    }
+    .recruitment-badge {
+        background: #d81b60;
+        color: #ffffff !important;
+        font-size: 0.75rem;
+        font-weight: 800;
+        padding: 3px 8px;
+        border-radius: 4px;
+        margin-right: 10px;
+    }
+    .recruitment-title {
+        flex: 1;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #c2185b !important;
+    }
+    .recruitment-btn {
+        background: #d81b60;
+        color: #ffffff !important;
+        font-size: 0.82rem;
+        font-weight: 700;
+        padding: 6px 14px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
 </style>
 
 <div class="sakura-container">
@@ -438,595 +484,4 @@ def clean_text_for_tts(text):
 
 async def _fetch_edge_tts(clean_text):
     voice = "ja-JP-NanamiNeural"
-    communicate = edge_tts.Communicate(clean_text, voice)
-    mp3_data = bytearray()
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            mp3_data.extend(chunk["data"])
-    return bytes(mp3_data)
-
-
-def generate_nhk_voice_sync(text):
-    if not EDGE_TTS_AVAILABLE:
-        return None
-    clean_text = clean_text_for_tts(text)
-    if not clean_text:
-        return None
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        audio_bytes = loop.run_until_complete(_fetch_edge_tts(clean_text))
-        loop.close()
-        return audio_bytes
-    except Exception:
-        return None
-
-
-# ==============================================================================
-# XỬ LÝ PHÂN TÍCH
-# ==============================================================================
-if analyze_btn:
-    if not api_key:
-        st.error("⚠️ Vui lòng cấu hình Gemini API Key để tiếp tục.")
-    elif not user_text.strip():
-        st.warning("⚠️ Vui lòng dán nội dung bài đọc trước khi bấm phân tích.")
-    else:
-        p_type, char_len, n_int, n_voc, n_gra, tot_q = determine_question_rules(
-            user_text
-        )
-
-        with st.spinner(
-            f"🌸 Đang phân tích {p_type} ({char_len} ký tự) & tạo {tot_q} câu hỏi"
-            " JLPT..."
-        ):
-            try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(
-                    model_name="gemini-3.6-flash",
-                    generation_config={"response_mime_type": "application/json"},
-                )
-
-                prompt = build_system_prompt(
-                    p_type, n_int, n_voc, n_gra, tot_q
-                )
-                response = model.generate_content(
-                    f"{prompt}\n\nVăn bản cần phân tích:\n{user_text}"
-                )
-                result = clean_and_parse_json(response.text)
-
-                if not result:
-                    st.error(
-                        "⚠️ AI trả về dữ liệu chưa chuẩn cấu trúc. Vui lòng bấm"
-                        " phân tích lại."
-                    )
-                else:
-                    if "paragraphs" in result and isinstance(
-                        result["paragraphs"], list
-                    ):
-                        for p in result["paragraphs"]:
-                            if isinstance(p, dict):
-                                orig = p.get("original_text", "")
-                                if KAKASI_AVAILABLE:
-                                    p["furigana_html"] = (
-                                        convert_to_furigana_html(orig)
-                                    )
-
-                    st.session_state.analysis_data = result
-                    st.session_state.current_user_text = user_text
-
-                audio_data = generate_nhk_voice_sync(user_text)
-                if audio_data:
-                    st.session_state.raw_audio_b64 = base64.b64encode(
-                        audio_data
-                    ).decode()
-                else:
-                    st.session_state.raw_audio_b64 = None
-
-            except Exception as e:
-                st.error(f"Đã xảy ra lỗi: {str(e)}")
-
-# ==============================================================================
-# HIỂN THỊ KẾT QUẢ
-# ==============================================================================
-if st.session_state.analysis_data and isinstance(
-    st.session_state.analysis_data, dict
-):
-    data = st.session_state.analysis_data
-    summary_data = (
-        data.get("summary", {})
-        if isinstance(data.get("summary"), dict)
-        else {}
-    )
-    questions = (
-        data.get("jlpt_practice_questions", [])
-        if isinstance(data.get("jlpt_practice_questions"), list)
-        else []
-    )
-
-    st.success("🎉 Đã phân tích thành công!")
-    sum_col1, sum_col2, sum_col3 = st.columns(3)
-    sum_col1.info(
-        f"🏷️ **Cấp độ ước tính:** {summary_data.get('estimated_jlpt_level', 'N/A')}"
-    )
-    sum_col2.info(f"📖 **Chủ đề:** {summary_data.get('topic', 'Chung')}")
-    sum_col3.info(f"📊 **Đề thi:** {len(questions)} câu hỏi JLPT")
-
-    tab_read, tab_grammar, tab_vocab, tab_kanji, tab_quiz = st.tabs([
-        "📖 Bài đọc & Dịch",
-        "📝 Ngữ pháp trọng tâm",
-        "📚 Từ vựng then chốt",
-        "🈲 Hán tự (Kanji)",
-        f"❓ Đề thi JLPT ({len(questions)} câu)",
-    ])
-
-    with tab_read:
-        show_furigana = st.toggle("🌸 Bật Furigana", value=True)
-        paragraphs = (
-            data.get("paragraphs", [])
-            if isinstance(data.get("paragraphs"), list)
-            else []
-        )
-        for p in paragraphs:
-            if isinstance(p, dict):
-                if show_furigana:
-                    st.markdown(
-                        f"<div>{p.get('furigana_html', '')}</div>",
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(
-                        f"<div class='plain-jp-text'>{p.get('original_text', '')}</div>",
-                        unsafe_allow_html=True,
-                    )
-                st.markdown(
-                    "<div class='vi-translation-box'>🇻🇳 <strong>Dịch"
-                    f" nghĩa:</strong> {p.get('vietnamese_translation', '')}</div>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown(
-                    "<div style='margin-bottom: 15px;'></div>",
-                    unsafe_allow_html=True,
-                )
-
-        if st.session_state.raw_audio_b64:
-            st.markdown(
-                f"""
-            <div class="sticky-audio-bar">
-                <span style="font-size: 0.9rem; font-weight: 700; color: #d81b60;">🎙️ Giọng đọc chuẩn Tokyo (NHK):</span>
-                <audio id="floating_player" controls style="height: 38px; max-width: 400px; flex-grow: 1;">
-                    <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
-                </audio>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 0.82rem; font-weight: 600;">⚡ Tốc độ:</span>
-                    <select id="speed_select" onchange="document.getElementById('floating_player').playbackRate = this.value;" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600;">
-                        <option value="0.75">x0.75</option>
-                        <option value="1.0" selected>x1.0</option>
-                        <option value="1.25">x1.25</option>
-                        <option value="1.5">x1.5</option>
-                    </select>
-                </div>
-            </div>
-            """,
-                unsafe_allow_html=True,
-            )
-
-    with tab_grammar:
-        grammars = (
-            data.get("grammar_analysis", [])
-            if isinstance(data.get("grammar_analysis"), list)
-            else []
-        )
-        if not grammars:
-            st.info("Không có mẫu ngữ pháp đặc biệt nào.")
-        for g in grammars:
-            if isinstance(g, dict):
-                p_text = g.get("pattern", "")
-                l_text = g.get("jlpt_level", "")
-                m_text = g.get("meaning", "")
-                exp_title = f"📌 {p_text} [{l_text}] — {m_text}"
-                with st.expander(exp_title, expanded=True):
-                    st.markdown(
-                        f"- **Ngữ cảnh trong bài:** `{g.get('usage_in_text', '')}`"
-                    )
-                    st.markdown(
-                        f"- **Giải thích chi tiết:** {g.get('explanation', '')}"
-                    )
-
-    with tab_vocab:
-        vocabs = (
-            data.get("vocabulary_list", [])
-            if isinstance(data.get("vocabulary_list"), list)
-            else []
-        )
-        if vocabs:
-            vocab_rows = [
-                {
-                    "Từ vựng / Cụm từ": v.get("word", ""),
-                    "Cách đọc (Kana)": v.get("reading", ""),
-                    "Cấp độ": v.get("jlpt_level", ""),
-                    "Từ loại": v.get("part_of_speech", ""),
-                    "Ý nghĩa trong bài": v.get("vietnamese_meaning", ""),
-                }
-                for v in vocabs
-                if isinstance(v, dict)
-            ]
-            st.dataframe(vocab_rows, use_container_width=True, hide_index=True)
-        else:
-            st.info("Chưa có danh sách từ vựng.")
-
-    with tab_kanji:
-        kanjis = (
-            data.get("kanji_list", [])
-            if isinstance(data.get("kanji_list"), list)
-            else []
-        )
-        if kanjis:
-            kanji_rows = [
-                {
-                    "Hán tự": k.get("kanji", ""),
-                    "Âm Hán Việt": k.get("han_viet", ""),
-                    "Cấp độ": k.get("jlpt_level", ""),
-                    "Âm On": k.get("onyomi", ""),
-                    "Âm Kun": k.get("kunyomi", ""),
-                    "Ý nghĩa": k.get("meaning", ""),
-                }
-                for k in kanjis
-                if isinstance(k, dict)
-            ]
-            st.dataframe(kanji_rows, use_container_width=True, hide_index=True)
-        else:
-            st.info("Chưa có danh sách Hán tự.")
-
-    with tab_quiz:
-        st.markdown(f"### ✍️ Đề thi thử JLPT ({len(questions)} câu hỏi)")
-        for idx, q in enumerate(questions):
-            if isinstance(q, dict):
-                q_num = q.get("question_number", idx + 1)
-                category = q.get("category", "Đọc hiểu")
-
-                badge_class = "badge-author"
-                if "từ vựng" in category.lower() or "kanji" in category.lower():
-                    badge_class = "badge-vocab"
-                elif "ngữ pháp" in category.lower():
-                    badge_class = "badge-grammar"
-
-                st.markdown(
-                    f"<span class='badge-category {badge_class}'>🏷️"
-                    f" {category}</span>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown(
-                    f"#### Câu {q_num}: {q.get('question_text', '')}"
-                )
-                st.caption(f"*(Dịch nghĩa: {q.get('question_vietnamese', '')})*")
-
-                opts = (
-                    q.get("options", {})
-                    if isinstance(q.get("options"), dict)
-                    else {}
-                )
-                choice_keys = [k for k in ["A", "B", "C", "D"] if k in opts]
-
-                user_choice = st.radio(
-                    f"Chọn phương án đúng cho câu {q_num}:",
-                    options=choice_keys,
-                    format_func=lambda x: f"{x}. {opts.get(x, '')}",
-                    key=f"quiz_radio_{q_num}",
-                    index=None,
-                )
-
-                correct_ans = q.get("correct_answer", "A")
-                opt_analysis = (
-                    q.get("option_analysis", {})
-                    if isinstance(q.get("option_analysis"), dict)
-                    else {}
-                )
-
-                if user_choice is not None:
-                    if user_choice == correct_ans:
-                        st.success(
-                            "🎉 **Chính xác!** Đáp án đúng là"
-                            f" **{correct_ans}**."
-                        )
-                    else:
-                        st.error(
-                            f"❌ **Chưa chính xác!** Bạn chọn **{user_choice}**,"
-                            f" đáp án chuẩn là **{correct_ans}**."
-                        )
-
-                    st.markdown(
-                        "**🔍 Phân tích chi tiết từng phương án & bẫy tư"
-                        " duy:**"
-                    )
-                    for opt_k in choice_keys:
-                        explanation_text = opt_analysis.get(
-                            opt_k, "Chưa có phân tích."
-                        )
-                        if opt_k == correct_ans:
-                            st.markdown(
-                                f"- ✅ **Phương án {opt_k} (ĐÚNG):**"
-                                f" {explanation_text}"
-                            )
-                        else:
-                            st.markdown(
-                                f"- ❌ **Phương án {opt_k} (SAI):**"
-                                f" {explanation_text}"
-                            )
-                st.markdown("---")
-
-# ==============================================================================
-# MỤC 1: FORM PHẢN HỒI
-# ==============================================================================
-st.markdown("<br><hr>", unsafe_allow_html=True)
-with st.expander("💌 Góp ý & Báo lỗi"):
-    with st.form("feedback_form", clear_on_submit=True):
-        fb_name = st.text_input("Tên hoặc Email (không bắt buộc):")
-        fb_type = st.selectbox(
-            "Loại góp ý:",
-            [
-                "Báo lỗi Furigana / AI",
-                "Lỗi giọng đọc",
-                "Đề xuất tính năng mới",
-                "Khác",
-            ],
-        )
-        fb_content = st.text_area(
-            "Nội dung:", placeholder="Mô tả ý kiến của bạn..."
-        )
-        submitted = st.form_submit_button("📩 Gửi ý kiến")
-        if submitted and fb_content.strip():
-            if sheet_webhook_url:
-                try:
-                    payload = {
-                        "time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                        "name": fb_name.strip() if fb_name.strip() else "Ẩn danh",
-                        "type": fb_type,
-                        "content": fb_content,
-                    }
-                    requests.post(sheet_webhook_url, json=payload, timeout=5)
-                except Exception:
-                    pass
-            st.success(
-                "🌸 Cảm ơn bạn! Ý kiến đóng góp đã được gửi thành công."
-            )
-
-# ==============================================================================
-# MỤC 2: KHU VỰC TUYỂN DỤNG SLIDE CAROUSEL + QR ZALO + LINK CANVA
-# ==============================================================================
-# Đọc ảnh QR Zalo nếu tồn tại
-qr_img_src = ""
-for img_name in ["zalo_qr.jpg", "zalo_qr.png", "zalo_qr.jpeg"]:
-    if os.path.exists(img_name):
-        with open(img_name, "rb") as img_file:
-            b64_qr = base64.b64encode(img_file.read()).decode()
-            qr_img_src = f"data:image/jpeg;base64,{b64_qr}"
-        break
-
-# Dự phòng nếu chưa có ảnh QR cục bộ
-if not qr_img_src:
-    qr_img_src = "[https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://zalo.me](https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://zalo.me)"
-
-st.markdown(
-    f"""
-<style>
-    .job-carousel-container {{
-        width: 100%;
-        margin-top: 15px;
-        background: #ffffff;
-        border: 2px solid #ffccd5;
-        border-radius: 14px;
-        overflow: hidden;
-        box-shadow: 0 4px 20px rgba(216, 27, 96, 0.08);
-        font-family: inherit;
-    }}
-    .job-carousel-header {{
-        background: linear-gradient(135deg, #d81b60 0%, #ff4081 100%);
-        color: #ffffff;
-        padding: 12px 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
-    }}
-    .job-carousel-header h3 {{
-        margin: 0;
-        font-size: 1.05rem;
-        font-weight: 700;
-        color: #ffffff !important;
-        letter-spacing: -0.3px;
-    }}
-    .canva-link-btn {{
-        background: #ffffff;
-        color: #d81b60 !important;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-size: 0.82rem;
-        font-weight: 700;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        transition: all 0.2s;
-    }}
-    .canva-link-btn:hover {{
-        background: #fff0f3;
-        transform: translateY(-1px);
-    }}
-    
-    /* Carousel CSS Animation */
-    .slider-wrapper {{
-        position: relative;
-        width: 100%;
-        height: 240px;
-        overflow: hidden;
-    }}
-    .slider-track {{
-        display: flex;
-        width: 400%;
-        height: 100%;
-        animation: slideAnimation 20s infinite ease-in-out;
-    }}
-    .slider-track:hover {{
-        animation-play-state: paused;
-    }}
-    .slide-item {{
-        width: 25%;
-        height: 100%;
-        padding: 16px 24px;
-        box-sizing: border-box;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: linear-gradient(135deg, #fffafa 0%, #ffffff 100%);
-    }}
-    @keyframes slideAnimation {{
-        0%, 20% {{ transform: translateX(0%); }}
-        25%, 45% {{ transform: translateX(-25%); }}
-        50%, 70% {{ transform: translateX(-50%); }}
-        75%, 95% {{ transform: translateX(-75%); }}
-        100% {{ transform: translateX(0%); }}
-    }}
-    
-    .job-card-grid {{
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        width: 100%;
-    }}
-    .job-mini-box {{
-        background: #ffffff;
-        border: 1px solid #ffe0e6;
-        border-left: 4px solid #d81b60;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 0.85rem;
-    }}
-    .job-mini-box strong {{
-        color: #d81b60;
-    }}
-    .qr-contact-box {{
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        background: #fff5f7;
-        padding: 12px 20px;
-        border-radius: 10px;
-        border: 1px dashed #ff80ab;
-        width: 100%;
-    }}
-    .qr-contact-box img {{
-        width: 130px;
-        height: 130px;
-        object-fit: contain;
-        border-radius: 8px;
-        background: white;
-        padding: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }}
-    .badge-hl {{
-        background: #e8f5e9;
-        color: #2e7d32;
-        padding: 3px 8px;
-        border-radius: 4px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        margin-right: 4px;
-    }}
-</style>
-
-<div class="job-carousel-container">
-    <div class="job-carousel-header">
-        <h3>🔥 TUYỂN DỤNG NHÂN SỰ TIẾNG NHẬT TỪ N3 — KHÔNG YÊU CẦU KINH NGHIỆM</h3>
-        <a href="{canva_url}" target="_blank" rel="noopener noreferrer" class="canva-link-btn">
-            🎨 Xem Infographic trên Canva ➔
-        </a>
-    </div>
-    
-    <div class="slider-wrapper">
-        <div class="slider-track">
-            <!-- SLIDE 1: TỔNG QUAN -->
-            <div class="slide-item">
-                <div style="flex: 1;">
-                    <div style="font-size: 1.15rem; font-weight: 800; color: #d81b60; margin-bottom: 6px;">
-                        🏢 16 Vị trí Kiến trúc & Xây dựng — Nhận việc T10/2026
-                    </div>
-                    <div style="font-size: 0.9rem; color: #444; line-height: 1.5;">
-                        Bạn học Kiến trúc / Xây dựng, có tiếng Nhật N3+ và đang tìm công việc đúng chuyên môn, được đào tạo từ đầu?
-                    </div>
-                    <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
-                        <span class="badge-hl">✅ Không yêu cầu kinh nghiệm</span>
-                        <span class="badge-hl">✅ ĐH / CĐ / Senmon</span>
-                        <span class="badge-hl">✅ Đào tạo chuyên môn bài bản</span>
-                        <span class="badge-hl">📍 Đống Đa, Hà Nội</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SLIDE 2: 4 VỊ TRÍ TUYỂN DỤNG -->
-            <div class="slide-item">
-                <div class="job-card-grid">
-                    <div class="job-mini-box">
-                        <strong>🏠 Thiết kế Kiến trúc (09 slot)</strong><br>
-                        • N3+ | ~12tr Gross<br>
-                        • Hiệu chỉnh bản vẽ nhà lắp ghép tiêu chuẩn Nhật
-                    </div>
-                    <div class="job-mini-box">
-                        <strong>📐 Xử lý Số liệu ngoài tiêu chuẩn (02 slot)</strong><br>
-                        • N3+ | ~12tr Gross<br>
-                        • Ưu tiên biết AutoCAD, chỉnh sửa bản vẽ chi tiết
-                    </div>
-                    <div class="job-mini-box">
-                        <strong>🧮 Tính toán Nguyên vật liệu (02 slot)</strong><br>
-                        • N3+ | ~12tr Gross<br>
-                        • Bóc tách & tính vật liệu từ dữ liệu thiết kế Nhật
-                    </div>
-                    <div class="job-mini-box">
-                        <strong>💻 BIM Kiến trúc (03 slot)</strong><br>
-                        • N2+ (hoặc N3 có nền kỹ thuật) | Lương Deal<br>
-                        • Dựng mô hình 3D, cơ hội tham gia phiên dịch dự án
-                    </div>
-                </div>
-            </div>
-
-            <!-- SLIDE 3: QUYỀN LỢI & ĐÃI NGỘ -->
-            <div class="slide-item">
-                <div style="flex: 1;">
-                    <div style="font-weight: 700; color: #d81b60; margin-bottom: 8px; font-size: 1rem;">
-                        🎁 Chế độ đãi ngộ & Môi trường làm việc:
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.85rem; color: #333;">
-                        <div>• Thưởng tháng 13 + thưởng đặc biệt cuối năm</div>
-                        <div>• Thưởng kinh doanh + lương OT đầy đủ</div>
-                        <div>• Hỗ trợ 100% chi phí nâng cao tiếng Nhật</div>
-                        <div>• Cơ hội đào tạo / công tác tại Nhật Bản</div>
-                        <div>• Đầy đủ BHXH, BHYT + khám sức khỏe định kỳ</div>
-                        <div>• Làm việc T2 – T6 (8:00 – 17:00, nghỉ T7-CN)</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SLIDE 4: LIÊN HỆ & QUÉT QR ZALO -->
-            <div class="slide-item">
-                <div class="qr-contact-box">
-                    <img src="{qr_img_src}" alt="Zalo QR Hân Nguyễn">
-                    <div>
-                        <div style="font-size: 1.05rem; font-weight: 800; color: #d81b60; margin-bottom: 4px;">
-                            📲 Liên hệ trực tiếp: Hân Nguyễn (HR)
-                        </div>
-                        <div style="font-size: 0.86rem; color: #555; line-height: 1.4;">
-                            Quét mã QR Zalo bên cạnh để gửi CV hoặc nhận tư vấn chi tiết về từng vị trí.
-                        </div>
-                        <div style="margin-top: 8px; font-size: 0.82rem; font-weight: 700; color: #c2185b;">
-                            ⏰ Hạn nhận CV: 11/09/2026 | 🚀 Đi làm: Đầu T10/2026
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
+    communicate = edge_tts.Comm
