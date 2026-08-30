@@ -5,6 +5,9 @@ import io
 import json
 import os
 import re
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Inches, Pt, RGBColor
 import google.generativeai as genai
 import requests
 import streamlit as st
@@ -345,146 +348,69 @@ def convert_to_furigana_html(text: str) -> str:
 
 
 # ==============================================================================
-# HÀM TẠO FILE XUẤT IN PDF (HTML PRINT)
+# HÀM XUẤT FILE WORD (.DOCX)
 # ==============================================================================
-def generate_pdf_html(data_obj, include_furigana=True):
+def generate_docx_file(data_obj):
+    doc = Document()
+    sections = doc.sections
+    for section in sections:
+        section.top_margin = Inches(0.8)
+        section.bottom_margin = Inches(0.8)
+        section.left_margin = Inches(0.8)
+        section.right_margin = Inches(0.8)
+
     topic = data_obj.get("summary", {}).get("topic", "Bài đọc tiếng Nhật")
     level = data_obj.get("summary", {}).get("estimated_jlpt_level", "N/A")
     paragraphs = data_obj.get("paragraphs", [])
 
-    body_items = ""
-    for idx, p in enumerate(paragraphs):
-        jp_content = (
-            p.get("furigana_html", "")
-            if include_furigana
-            else p.get("original_text", "")
-        )
-        vi_trans = p.get("vietnamese_translation", "")
-        body_items += f"""
-        <div class="paragraph-card">
-            <div class="para-badge">Đoạn {idx + 1}</div>
-            <div class="jp-text">{jp_content}</div>
-            <div class="vi-text">🇻🇳 <b>Dịch:</b> {vi_trans}</div>
-        </div>
-        """
+    # Tiêu đề tài liệu
+    title_p = doc.add_paragraph()
+    title_run = title_p.add_run(f"🌸 {topic}")
+    title_run.font.size = Pt(16)
+    title_run.font.bold = True
+    title_run.font.color.rgb = RGBColor(216, 27, 96)
 
-    html_template = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>{topic}</title>
-    <style>
-        @page {{ size: A4; margin: 15mm 15mm; }}
-        body {{
-            font-family: 'Segoe UI', Arial, 'Hiragino Mincho Pro', 'Yu Mincho', sans-serif;
-            color: #2c3e50;
-            line-height: 1.6;
-            margin: 0;
-            padding: 10px;
-            background-color: #fafafa;
-        }}
-        .container {{
-            max-width: 800px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 24px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }}
-        .header-box {{
-            border-bottom: 2px solid #ff758c;
-            padding-bottom: 12px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-        }}
-        .doc-title {{
-            font-size: 20px;
-            font-weight: bold;
-            color: #d81b60;
-            margin: 0;
-        }}
-        .meta-tag {{
-            background: #fff0f3;
-            color: #d81b60;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: bold;
-            border: 1px solid #ffccd5;
-        }}
-        .paragraph-card {{
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 1px dashed #e0e0e0;
-            page-break-inside: avoid;
-        }}
-        .para-badge {{
-            font-size: 11px;
-            font-weight: bold;
-            color: #888;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-        }}
-        .jp-text {{
-            font-size: 16px;
-            line-height: 2.2;
-            color: #111;
-            margin-bottom: 8px;
-            font-family: 'Hiragino Mincho Pro', 'Yu Mincho', 'MS Mincho', serif;
-        }}
-        ruby {{ font-size: 16px; }}
-        rt {{ font-size: 9.5px; color: #d81b60; font-weight: normal; }}
-        .vi-text {{
-            background: #fff8e1;
-            border-left: 4px solid #ff9800;
-            padding: 8px 12px;
-            border-radius: 0 6px 6px 0;
-            font-size: 13.5px;
-            color: #d84315;
-            margin-top: 6px;
-        }}
-        .footer {{
-            text-align: center;
-            font-size: 11px;
-            color: #999;
-            margin-top: 25px;
-            border-top: 1px solid #eee;
-            padding-top: 10px;
-        }}
-        @media print {{
-            .no-print {{ display: none !important; }}
-            body {{ padding: 0; background: #fff; }}
-            .container {{ box-shadow: none; padding: 0; max-width: 100%; }}
-            * {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="no-print" style="background: #e8f5e9; border: 1px solid #a5d6a7; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #2e7d32; font-weight: bold; font-size: 14px;">🌿 Bản xem trước in PDF đã sẵn sàng!</span>
-            <button onclick="window.print()" style="background: #d81b60; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">🖨️ In hoặc Lưu về máy (Ctrl + P / ⌘ + P)</button>
-        </div>
-        
-        <div class="header-box">
-            <div>
-                <h1 class="doc-title">🌸 {topic}</h1>
-                <div style="font-size: 12px; color: #666; margin-top: 4px;">Tài liệu Luyện đọc & Dịch nghĩa tiếng Nhật JLPT</div>
-            </div>
-            <div class="meta-tag">Cấp độ: {level}</div>
-        </div>
-        
-        {body_items}
-        
-        <div class="footer">
-            Trang web Luyện Đọc & Phân Tích Tiếng Nhật JLPT
-        </div>
-    </div>
-</body>
-</html>"""
-    return html_template
+    # Thông tin meta
+    meta_p = doc.add_paragraph()
+    meta_run = meta_p.add_run(
+        f"Trình độ ước tính: {level} | Ngày tạo:"
+        f" {datetime.now().strftime('%d/%m/%Y')}"
+    )
+    meta_run.font.size = Pt(10)
+    meta_run.font.italic = True
+    meta_run.font.color.rgb = RGBColor(100, 100, 100)
+
+    doc.add_paragraph("-" * 55)
+
+    # Thêm từng đoạn
+    for idx, p in enumerate(paragraphs):
+        para_title = doc.add_paragraph()
+        para_title_run = para_title.add_run(f"Đoạn {idx + 1}:")
+        para_title_run.font.size = Pt(11)
+        para_title_run.font.bold = True
+        para_title_run.font.color.rgb = RGBColor(194, 24, 91)
+
+        # Câu tiếng Nhật
+        jp_p = doc.add_paragraph()
+        jp_run = jp_p.add_run(p.get("original_text", ""))
+        jp_run.font.size = Pt(12)
+        jp_run.font.name = "Meiryo"
+
+        # Bản dịch tiếng Việt
+        vi_p = doc.add_paragraph()
+        vi_run_lbl = vi_p.add_run("🇻🇳 Dịch nghĩa: ")
+        vi_run_lbl.font.bold = True
+        vi_run = vi_p.add_run(p.get("vietnamese_translation", ""))
+        vi_run.font.size = Pt(11)
+        vi_run.font.italic = True
+        vi_run.font.color.rgb = RGBColor(216, 67, 21)
+
+        doc.add_paragraph()
+
+    bio = io.BytesIO()
+    doc.save(bio)
+    bio.seek(0)
+    return bio
 
 
 # ==============================================================================
@@ -753,19 +679,20 @@ if st.session_state.analysis_data and isinstance(
         with ctrl_col1:
             show_furigana = st.toggle("🌸 Bật Furigana", value=True)
         with ctrl_col2:
-            with st.popover("📄 Xuất file PDF bài đọc & bản dịch"):
-                st.markdown("#### ⚙️ Tùy chọn xuất PDF")
-                pdf_furigana_opt = st.radio(
-                    "Định dạng nội dung tiếng Nhật khi in/lưu PDF:",
-                    ["Kèm Furigana (phiên âm trên chữ Hán)", "Không kèm Furigana (chữ Kanji thuần)"],
-                    index=0,
-                )
-                include_furi = True if "Kèm Furigana" in pdf_furigana_opt else False
-                pdf_html_content = generate_pdf_html(data, include_furigana=include_furi)
-                pdf_b64 = base64.b64encode(pdf_html_content.encode("utf-8")).decode("utf-8")
-                download_href = f'<a href="data:text/html;base64,{pdf_b64}" target="_blank" style="display: inline-block; background-color: #d81b60; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 8px;">🖨️ Mở trang In / Lưu PDF ngay</a>'
-                st.markdown(download_href, unsafe_allow_html=True)
-                st.caption("💡 *Bấm vào nút trên để mở trang in chuẩn A4, sau đó nhấn **Ctrl+P** (hoặc **Lưu dưới dạng PDF**) để tải về máy.*")
+            docx_file = generate_docx_file(data)
+            topic_slug = re.sub(
+                r"[^\w\s-]", "", summary_data.get("topic", "BaiDoc")
+            ).strip()
+            topic_slug = re.sub(r"[-\s]+", "_", topic_slug)
+            st.download_button(
+                label="📥 Tải bài đọc & bản dịch (.docx / Word)",
+                data=docx_file,
+                file_name=f"JLPT_Reading_{topic_slug}.docx",
+                mime=(
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                ),
+                type="secondary",
+            )
 
         st.markdown("---")
 
@@ -806,11 +733,14 @@ if st.session_state.analysis_data and isinstance(
                 </audio>
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="font-size: 0.82rem; font-weight: 600;">⚡ Tốc độ:</span>
-                    <select id="speed_select" onchange="document.getElementById('floating_player').playbackRate = this.value;" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600;">
-                        <option value="0.75">x0.75</option>
-                        <option value="1.0" selected>x1.0</option>
-                        <option value="1.25">x1.25</option>
-                        <option value="1.5">x1.5</option>
+                    <select id="speed_select" onchange="document.getElementById('floating_player').playbackRate = this.value;" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600; cursor: pointer;">
+                        <option value="0.5">x0.5 (Rất chậm)</option>
+                        <option value="0.75">x0.75 (Chậm)</option>
+                        <option value="1.0" selected>x1.0 (Chuẩn)</option>
+                        <option value="1.25">x1.25 (Nhanh vừa)</option>
+                        <option value="1.5">x1.5 (Nhanh)</option>
+                        <option value="1.75">x1.75 (Rất nhanh)</option>
+                        <option value="2.0">x2.0 (Cực nhanh)</option>
                     </select>
                 </div>
             </div>
