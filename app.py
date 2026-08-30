@@ -171,7 +171,7 @@ HEADER_HTML = """
     }
     @media (prefers-color-scheme: dark) {
         .sticky-audio-bar {
-            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(25, 10, 20, 0.98));
+            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(255, 10, 20, 0.98));
             border-top: 2px solid #ff758c;
             box-shadow: 0 -4px 18px rgba(255, 117, 140, 0.25);
         }
@@ -253,9 +253,7 @@ api_key = st.secrets.get("GEMINI_API_KEY", None)
 sheet_webhook_url = st.secrets.get("GOOGLE_SHEET_WEBHOOK_URL", "")
 
 if not api_key:
-    api_key = st.sidebar.text_input(
-        "🔑 Nhập Gemini API Key của bạn:", type="password"
-    )
+    api_key = st.sidebar.text_input("🔑 Nhập Gemini API Key của bạn:", type="password")
 
 if "analysis_data" not in st.session_state:
     st.session_state.analysis_data = None
@@ -270,9 +268,7 @@ user_text = st.text_area(
     placeholder="例：私たちの意識は、言葉とイメージの網の目をふわふわ漂っているようなものである。それが言葉や文章に定着したとき、「考え」というものになる...",
 )
 
-analyze_btn = st.button(
-    "🚀 Phân tích bài đọc", type="primary", use_container_width=True
-)
+analyze_btn = st.button("🚀 Phân tích bài đọc", type="primary", use_container_width=True)
 
 # ==============================================================================
 # HÀM XỬ LÝ FURIGANA
@@ -399,7 +395,7 @@ def generate_docx_file(data_obj):
 
 
 # ==============================================================================
-# HÀM BỘ NHỚ ĐỆM & ĐA LUỒNG XỬ LÝ NHANH
+# HÀM BỘ NHỚ ĐỆM & QUY TẮC CÂU HỎI
 # ==============================================================================
 def determine_question_rules(text: str):
     char_count = len([c for c in text if not c.isspace()])
@@ -532,7 +528,6 @@ def generate_nhk_voice_sync(text):
         return None
 
 
-# Cache kết quả AI để tăng tốc tức thì khi phân tích lại
 @st.cache_data(show_spinner=False, ttl=86400)
 def fetch_gemini_analysis(text: str, key: str):
     p_type, _, n_int, n_voc, n_gra, tot_q = determine_question_rules(text)
@@ -567,4 +562,37 @@ if analyze_btn:
 
         with st.spinner(f"⚡ Đang tăng tốc phân tích {p_type} ({char_len} ký tự) & tạo {tot_q} câu hỏi JLPT..."):
             try:
-                with ThreadPoolExecutor(max_workers=2) as
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    future_ai = executor.submit(fetch_gemini_analysis, user_text, api_key)
+                    future_audio = executor.submit(fetch_nhk_audio, user_text)
+
+                    result = future_ai.result()
+                    audio_data = future_audio.result()
+
+                if not result:
+                    st.error("⚠️ AI trả về dữ liệu chưa chuẩn cấu trúc. Vui lòng bấm phân tích lại.")
+                else:
+                    if "paragraphs" in result and isinstance(result["paragraphs"], list):
+                        for p in result["paragraphs"]:
+                            if isinstance(p, dict):
+                                orig = p.get("original_text", "")
+                                p["furigana_html"] = convert_to_furigana_html(orig) if KAKASI_AVAILABLE else orig
+
+                    st.session_state.analysis_data = result
+                    st.session_state.current_user_text = user_text
+
+                if audio_data:
+                    st.session_state.raw_audio_b64 = base64.b64encode(audio_data).decode()
+                else:
+                    st.session_state.raw_audio_b64 = None
+
+            except Exception as e:
+                st.error(f"Đã xảy ra lỗi: {str(e)}")
+
+# ==============================================================================
+# HIỂN THỊ KẾT QUẢ PHÂN TÍCH
+# ==============================================================================
+if st.session_state.analysis_data and isinstance(st.session_state.analysis_data, dict):
+    data = st.session_state.analysis_data
+    summary_data = data.get("summary", {}) if isinstance(data.get("summary"), dict) else {}
+    questions = data.get("jlpt_practice_questions", []) if isinstance(data.get("jlpt_practice_
