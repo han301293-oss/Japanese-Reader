@@ -15,23 +15,24 @@ st.markdown(
 .job-page-container {
     max-width: 820px;
     margin: 0 auto;
-    background: #ffffff;
+    background: #ffffff !important;
     border-radius: 14px;
-    padding: 26px 32px;
+    padding: 24px 20px;
     border: 1px solid #ffccd5;
     box-shadow: 0 4px 20px rgba(216, 27, 96, 0.08);
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: #333333 !important;
 }
 .company-badge {
     display: inline-block;
-    background: #ffebee;
-    color: #d81b60;
+    background: #ffebee !important;
+    color: #d81b60 !important;
     font-size: 0.88rem;
     font-weight: 800;
     padding: 4px 14px;
     border-radius: 6px;
     letter-spacing: 0.5px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     border: 1px solid #ffccd5;
 }
 .job-header {
@@ -41,37 +42,45 @@ st.markdown(
     margin-bottom: 25px;
 }
 .job-title {
-    color: #d81b60;
-    font-size: 1.45rem;
-    font-weight: 800;
-    margin-bottom: 8px;
-    line-height: 1.35;
+    color: #d81b60 !important;
+    font-size: 1.45rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 10px !important;
+    line-height: 1.4 !important;
+    display: block !important;
+}
+.job-subtitle {
+    display: block !important;
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: #c2185b !important;
+    margin-top: 4px;
 }
 .job-sub {
-    color: #555;
-    font-size: 0.98rem;
+    color: #444444 !important;
+    font-size: 0.95rem !important;
     line-height: 1.5;
 }
 .badge-pill-list {
     display: flex;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
     margin-top: 14px;
 }
 .badge-pill {
-    background: #ffebee;
-    color: #c2185b;
-    padding: 5px 14px;
+    background: #ffebee !important;
+    color: #c2185b !important;
+    padding: 5px 12px;
     border-radius: 20px;
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
 }
 .section-head {
-    color: #d81b60;
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin: 26px 0 14px 0;
+    color: #d81b60 !important;
+    font-size: 1.18rem !important;
+    font-weight: 700 !important;
+    margin: 24px 0 14px 0;
 }
 .job-grid-2x2 {
     display: grid;
@@ -80,24 +89,26 @@ st.markdown(
 }
 @media (max-width: 650px) {
     .job-grid-2x2 { grid-template-columns: 1fr; }
+    .job-page-container { padding: 18px 14px; }
+    .job-title { font-size: 1.25rem !important; }
 }
 .job-item-card {
-    background: #fffafb;
+    background: #fffafb !important;
     border: 1px solid #ffd1dc;
     border-left: 5px solid #d81b60;
     padding: 14px 16px;
     border-radius: 8px;
 }
 .job-item-card h4 {
-    color: #c2185b;
+    color: #c2185b !important;
     margin-bottom: 8px;
-    font-size: 1rem;
-    font-weight: 700;
+    font-size: 0.98rem !important;
+    font-weight: 700 !important;
 }
 .job-item-card ul {
     padding-left: 18px;
-    font-size: 0.88rem;
-    color: #444;
+    font-size: 0.88rem !important;
+    color: #444444 !important;
     line-height: 1.5;
     margin: 0;
 }
@@ -113,45 +124,42 @@ st.markdown(
     .benefits-grid { grid-template-columns: 1fr; }
 }
 .benefits-grid li {
-    background: #f8fff8;
+    background: #f8fff8 !important;
     border: 1px solid #c8e6c9;
     padding: 8px 12px;
     border-radius: 6px;
-    font-size: 0.88rem;
-    color: #2e7d32;
+    font-size: 0.88rem !important;
+    color: #2e7d32 !important;
     font-weight: 600;
 }
 .contact-box-wrapper {
-    margin-top: 30px;
-    background: linear-gradient(135deg, #fff0f3, #ffe4e8);
+    margin-top: 26px;
+    background: linear-gradient(135deg, #fff0f3, #ffe4e8) !important;
     border-radius: 12px;
-    padding: 20px;
+    padding: 18px;
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 18px;
     flex-wrap: wrap;
     border: 1px dashed #ff80ab;
 }
 .contact-box-wrapper img {
-    width: 140px;
-    height: 140px;
+    width: 130px;
+    height: 130px;
     border-radius: 8px;
-    background: #ffffff;
-    padding: 6px;
+    background: #ffffff !important;
+    padding: 5px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 .contact-link {
-    color: #0d47a1;
-    font-weight: 600;
+    color: #0d47a1 !important;
+    font-weight: 700;
     text-decoration: none;
-}
-.contact-link:hover {
-    text-decoration: underline;
 }
 .back-btn-link {
     display: inline-block;
     margin-bottom: 15px;
-    color: #d81b60;
+    color: #d81b60 !important;
     text-decoration: none;
     font-weight: 700;
     font-size: 0.95rem;
@@ -178,8 +186,9 @@ html_body = f"""
 <div class="job-page-container">
 <div class="job-header">
 <div class="company-badge">🏢 DAIWAHOUSE VIỆT NAM</div>
-<h1 class="job-title">🔥 TUYỂN DỤNG 16 NHÂN VIÊN TIẾNG NHẬT N3+<br><span style="font-size: 1.15rem; font-weight: 700;">(Không yêu cầu kinh nghiệm)</span></h1>
-<p class="job-sub">Bạn học Kiến trúc / Xây dựng hoặc 1 một chuyên ngành kĩ thuật khác, có tiếng Nhật N3 trở lên, đang tìm một công việc không yêu cầu kinh nghiệm nhưng được đào tạo bài bản?</p>
+<div class="job-title">🔥 TUYỂN DỤNG 16 NHÂN VIÊN TIẾNG NHẬT N3+</div>
+<div class="job-subtitle">(Không yêu cầu kinh nghiệm)</div>
+<p class="job-sub" style="margin-top: 10px;">Bạn học Kiến trúc / Xây dựng hoặc 1 một chuyên ngành kĩ thuật khác, có tiếng Nhật N3 trở lên, đang tìm một công việc không yêu cầu kinh nghiệm nhưng được đào tạo bài bản?</p>
 <div class="badge-pill-list">
 <span class="badge-pill">🎯 16 Vị trí</span>
 <span class="badge-pill">📍 Đống Đa, Hà Nội</span>
@@ -239,11 +248,11 @@ html_body = f"""
 <div class="contact-box-wrapper">
 <img src="{qr_b64_src}" alt="QR Zalo Hân Nguyễn">
 <div style="flex: 1;">
-<h3 style="color: #d81b60; margin: 0 0 6px 0;">📲 Liên hệ: Hân Nguyễn (HR)</h3>
-<p style="font-size: 0.9rem; color: #444; margin: 0 0 6px 0;">📧 Email: <a href="mailto:nguyenthihan@daiwahouse.vn" class="contact-link">nguyenthihan@daiwahouse.vn</a></p>
-<p style="font-size: 0.88rem; color: #555; margin: 0 0 8px 0;">Quét mã QR Zalo bên cạnh để gửi CV hoặc nhận tư vấn chi tiết về từng vị trí.</p>
-<div style="color: #c2185b; font-weight: bold; font-size: 0.95rem;">⏰ Hạn nhận CV: 11/09/2026</div>
-<div style="color: #c2185b; font-weight: bold; font-size: 0.95rem;">🚀 Dự kiến đi làm: Đầu tháng 10/2026</div>
+<h3 style="color: #d81b60 !important; margin: 0 0 6px 0;">📲 Liên hệ: Hân Nguyễn (HR)</h3>
+<p style="font-size: 0.9rem; color: #444444 !important; margin: 0 0 6px 0;">📧 Email: <a href="mailto:nguyenthihan@daiwahouse.vn" class="contact-link">nguyenthihan@daiwahouse.vn</a></p>
+<p style="font-size: 0.88rem; color: #555555 !important; margin: 0 0 8px 0;">Quét mã QR Zalo bên cạnh để gửi CV hoặc nhận tư vấn chi tiết về từng vị trí.</p>
+<div style="color: #c2185b !important; font-weight: bold; font-size: 0.95rem;">⏰ Hạn nhận CV: 11/09/2026</div>
+<div style="color: #c2185b !important; font-weight: bold; font-size: 0.95rem;">🚀 Dự kiến đi làm: Đầu tháng 10/2026</div>
 </div>
 </div>
 </div>
