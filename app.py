@@ -414,60 +414,61 @@ def determine_question_rules(text: str):
 
 
 def build_system_prompt(passage_type, num_intent, num_vocab, num_grammar, total_questions):
-    prompt_text = (
-        "Bạn là Chuyên gia Ngôn ngữ học tiếng Nhật và Giảng viên Luyện thi JLPT cao cấp (Cấp độ N1).\n"
-        f"Nhiệm vụ: Phân tích bài đọc ({passage_type}) và trả về kết quả DUY NHẤT dưới dạng JSON hợp lệ.\n\n"
-        "YÊU CẦU PHÂN TÍCH:\n"
-        "1. DỊCH THUẬT: Chia văn bản thành các đoạn văn ngắn logic, dịch tự nhiên, chuẩn xác sang tiếng Việt.\n"
-        "2. TỪ VỰNG: Trích xuất 8 đến 12 từ/cụm từ then chốt (kèm Kana, cấp độ, nghĩa ngữ cảnh).\n"
-        "3. HÁN TỰ (KANJI): Trích xuất 10 đến 20 chữ Hán quan trọng nhất (kèm Âm Hán, On/Kun, nghĩa). Với bài ngắn, trích xuất tối đa các Kanji có trong bài.\n"
-        "4. NGỮ PHÁP: 3 đến 5 mẫu ngữ pháp cốt lõi kèm ngữ cảnh trong bài và giải thích ngắn gọn.\n"
-        f"5. ĐỀ THI JLPT: Tạo đúng {total_questions} câu hỏi ({num_intent} ý đồ tác giả, {num_vocab} từ vựng/kanji, {num_grammar} ngữ pháp), "
-        "4 phương án A/B/C/D kèm giải thích ngắn gọn vì sao đáp án đúng và phân tích bẫy các câu sai.\n\n"
-        "JSON Schema bắt buộc:\n"
-        "{\n"
-        '  "summary": { "estimated_jlpt_level": "N2", "topic": "Chủ đề", "word_count": 180 },\n'
-        '  "paragraphs": [\n'
-        '    {\n'
-        '      "paragraph_id": 1,\n'
-        '      "original_text": "văn bản gốc của đoạn",\n'
-        '      "vietnamese_translation": "bản dịch tiếng Việt"\n'
-        '    }\n'
-        '  ],\n'
-        '  "grammar_analysis": [\n'
-        '    {\n'
-        '      "pattern": "mẫu ngữ pháp",\n'
-        '      "jlpt_level": "N3",\n'
-        '      "meaning": "ý nghĩa",\n'
-        '      "usage_in_text": "câu trong bài (nghĩa)",\n'
-        '      "explanation": "giải thích"\n'
-        '    }\n'
-        '  ],\n'
-        '  "vocabulary_list": [\n'
-        '    { "word": "từ vựng", "reading": "cách đọc", "part_of_speech": "từ loại", "jlpt_level": "N2", "vietnamese_meaning": "nghĩa" }\n'
-        '  ],\n'
-        '  "kanji_list": [\n'
-        '    { "kanji": "hán tự", "han_viet": "ÂM HÁN", "jlpt_level": "N2", "onyomi": "On", "kunyomi": "Kun", "meaning": "nghĩa" }\n'
-        '  ],\n'
-        '  "jlpt_practice_questions": [\n'
-        '    {\n'
-        '      "question_number": 1,\n'
-        '      "category": "Ý đồ tác giả",\n'
-        '      "question_text": "câu hỏi tiếng Nhật",\n'
-        '      "question_vietnamese": "dịch câu hỏi",\n'
-        '      "options": { "A": "...", "B": "...", "C": "...", "D": "..." },\n'
-        '      "correct_answer": "A",\n'
-        '      "option_analysis": {\n'
-        '        "A": "Giải thích vì sao đúng",\n'
-        '        "B": "Lý do sai",\n'
-        '        "C": "Lý do sai",\n'
-        '        "D": "Lý do sai"\n'
-        '      }\n'
-        '    }\n'
-        '  ]\n'
-        "}\n"
-    )
-    return prompt_text
+    prompt_lines = [
+        "Bạn là Chuyên gia Ngôn ngữ học tiếng Nhật và Giảng viên Luyện thi JLPT cao cấp (Cấp độ N1).",
+        f"Nhiệm vụ: Phân tích bài đọc ({passage_type}) và trả về kết quả DUY NHẤT dưới dạng JSON hợp lệ.",
+        "",
+        "YÊU CẦU PHÂN TÍCH:",
+        "1. DỊCH THUẬT: Chia văn bản thành các đoạn văn ngắn logic, dịch tự nhiên, chuẩn xác sang tiếng Việt.",
+        "2. TỪ VỰNG: Trích xuất 8 đến 12 từ/cụm từ then chốt (kèm Kana, cấp độ, nghĩa ngữ cảnh).",
+        "3. HÁN TỰ (KANJI): Trích xuất 10 đến 20 chữ Hán quan trọng nhất (kèm Âm Hán, On/Kun, nghĩa). Với bài ngắn, trích xuất tối đa các Kanji có trong bài.",
+        "4. NGỮ PHÁP: 3 đến 5 mẫu ngữ pháp cốt lõi kèm ngữ cảnh trong bài và giải thích ngắn gọn.",
+        f"5. ĐỀ THI JLPT: Tạo đúng {total_questions} câu hỏi ({num_intent} ý đồ tác giả, {num_vocab} từ vựng/kanji, {num_grammar} ngữ pháp), 4 phương án A/B/C/D kèm giải thích ngắn gọn vì sao đáp án đúng và phân tích bẫy các câu sai.",
+        "",
+        "JSON Schema bắt buộc:",
+        "{",
+        '  "summary": { "estimated_jlpt_level": "N2", "topic": "Chủ đề", "word_count": 180 },',
+        '  "paragraphs": [',
+        '    {',
+        '      "paragraph_id": 1,',
+        '      "original_text": "văn bản gốc của đoạn",',
+        '      "vietnamese_translation": "bản dịch tiếng Việt"',
+        '    }',
+        '  ],',
+        '  "grammar_analysis": [',
+        '    {',
+        '      "pattern": "mẫu ngữ pháp",',
+        '      "jlpt_level": "N3",',
+        '      "meaning": "ý nghĩa",',
+        '      "usage_in_text": "câu trong bài (nghĩa)",',
+        '      "explanation": "giải thích"',
+        '    }',
+        '  ],',
+        '  "vocabulary_list": [',
+        '    { "word": "từ vựng", "reading": "cách đọc", "part_of_speech": "từ loại", "jlpt_level": "N2", "vietnamese_meaning": "nghĩa" }',
+        '  ],',
+        '  "kanji_list": [',
+        '    { "kanji": "hán tự", "han_viet": "ÂM HÁN", "jlpt_level": "N2", "onyomi": "On", "kunyomi": "Kun", "meaning": "nghĩa" }',
+        '  ],',
+        '  "jlpt_practice_questions": [',
+        '    {',
+        '      "question_number": 1,',
+        '      "category": "Ý đồ tác giả",',
+        '      "question_text": "câu hỏi tiếng Nhật",',
+        '      "question_vietnamese": "dịch câu hỏi",',
+        '      "options": { "A": "...", "B": "...", "C": "...", "D": "..." },',
+        '      "correct_answer": "A",',
+        '      "option_analysis": {',
+        '        "A": "Giải thích vì sao đúng",',
+        '        "B": "Lý do sai",',
+        '        "C": "Lý do sai",',
+        '        "D": "Lý do sai"',
+        '      }',
+        '    }',
+        '  ]',
+        "}"
+    ]
+    return "\n".join(prompt_lines)
 
 
 def clean_and_parse_json(raw_text):
@@ -534,65 +535,4 @@ def fetch_gemini_analysis(text: str, key: str):
     genai.configure(api_key=key)
     model = genai.GenerativeModel(
         model_name="gemini-3.6-flash",
-        generation_config={
-            "response_mime_type": "application/json",
-            "temperature": 0.25,
-        },
-    )
-    prompt = build_system_prompt(p_type, n_int, n_voc, n_gra, tot_q)
-    response = model.generate_content(f"{prompt}\n\nVăn bản cần phân tích:\n{text}")
-    return clean_and_parse_json(response.text)
-
-
-@st.cache_data(show_spinner=False, ttl=86400)
-def fetch_nhk_audio(text: str):
-    return generate_nhk_voice_sync(text)
-
-
-# ==============================================================================
-# XỬ LÝ PHÂN TÍCH SONG SONG (PARALLEL EXECUTION)
-# ==============================================================================
-if analyze_btn:
-    if not api_key:
-        st.error("⚠️ Vui lòng cấu hình Gemini API Key để tiếp tục.")
-    elif not user_text.strip():
-        st.warning("⚠️ Vui lòng dán nội dung bài đọc trước khi bấm phân tích.")
-    else:
-        p_type, char_len, _, _, _, tot_q = determine_question_rules(user_text)
-
-        with st.spinner(f"⚡ Đang tăng tốc phân tích {p_type} ({char_len} ký tự) & tạo {tot_q} câu hỏi JLPT..."):
-            try:
-                with ThreadPoolExecutor(max_workers=2) as executor:
-                    future_ai = executor.submit(fetch_gemini_analysis, user_text, api_key)
-                    future_audio = executor.submit(fetch_nhk_audio, user_text)
-
-                    result = future_ai.result()
-                    audio_data = future_audio.result()
-
-                if not result:
-                    st.error("⚠️ AI trả về dữ liệu chưa chuẩn cấu trúc. Vui lòng bấm phân tích lại.")
-                else:
-                    if "paragraphs" in result and isinstance(result["paragraphs"], list):
-                        for p in result["paragraphs"]:
-                            if isinstance(p, dict):
-                                orig = p.get("original_text", "")
-                                p["furigana_html"] = convert_to_furigana_html(orig) if KAKASI_AVAILABLE else orig
-
-                    st.session_state.analysis_data = result
-                    st.session_state.current_user_text = user_text
-
-                if audio_data:
-                    st.session_state.raw_audio_b64 = base64.b64encode(audio_data).decode()
-                else:
-                    st.session_state.raw_audio_b64 = None
-
-            except Exception as e:
-                st.error(f"Đã xảy ra lỗi: {str(e)}")
-
-# ==============================================================================
-# HIỂN THỊ KẾT QUẢ PHÂN TÍCH
-# ==============================================================================
-if st.session_state.analysis_data and isinstance(st.session_state.analysis_data, dict):
-    data = st.session_state.analysis_data
-    summary_data = data.get("summary", {}) if isinstance(data.get("summary"), dict) else {}
-    questions = data.get("jlpt_practice_questions", []) if isinstance(data.get("jlpt_practice_
+        generation_
