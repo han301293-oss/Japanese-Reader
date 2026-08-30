@@ -188,7 +188,7 @@ st.markdown(
     .badge-vocab { background-color: #f3e5f5; color: #7b1fa2; }
     .badge-grammar { background-color: #e8f5e9; color: #2e7d32; }
 
-    /* Nút tuyển dụng mở Tab mới dạng HTML */
+    /* Nút tuyển dụng mở Tab mới */
     .recruitment-link-card {
         display: flex;
         align-items: center;
@@ -715,7 +715,7 @@ if analyze_btn:
                 st.error(f"Đã xảy ra lỗi: {str(e)}")
 
 # ==============================================================================
-# HIỂN THỊ KẾT QUẢ PHÂN TÍCH (NẾU ĐÃ PHÂN TÍCH)
+# HIỂN THỊ KẾT QUẢ PHÂN TÍCH (NẾU ĐÃ CÓ DỮ LIỆU)
 # ==============================================================================
 if st.session_state.analysis_data and isinstance(
     st.session_state.analysis_data, dict
@@ -748,7 +748,6 @@ if st.session_state.analysis_data and isinstance(
         f"❓ Đề thi JLPT ({len(questions)} câu)",
     ])
 
-    # Tab 1: Bài đọc & Dịch + Tùy chọn In/Lưu PDF
     with tab_read:
         ctrl_col1, ctrl_col2 = st.columns([1.2, 3.8])
         with ctrl_col1:
@@ -819,7 +818,6 @@ if st.session_state.analysis_data and isinstance(
                 unsafe_allow_html=True,
             )
 
-    # Tab 2: Ngữ pháp
     with tab_grammar:
         grammars = (
             data.get("grammar_analysis", [])
@@ -842,7 +840,6 @@ if st.session_state.analysis_data and isinstance(
                         f"- **Giải thích chi tiết:** {g.get('explanation', '')}"
                     )
 
-    # Tab 3: Từ vựng
     with tab_vocab:
         vocabs = (
             data.get("vocabulary_list", [])
@@ -865,7 +862,6 @@ if st.session_state.analysis_data and isinstance(
         else:
             st.info("Chưa có danh sách từ vựng.")
 
-    # Tab 4: Kanji
     with tab_kanji:
         kanjis = (
             data.get("kanji_list", [])
@@ -889,7 +885,6 @@ if st.session_state.analysis_data and isinstance(
         else:
             st.info("Chưa có danh sách Hán tự.")
 
-    # Tab 5: Đề thi JLPT
     with tab_quiz:
         st.markdown(f"### ✍️ Đề thi thử JLPT ({len(questions)} câu hỏi)")
         for idx, q in enumerate(questions):
@@ -1004,31 +999,11 @@ with st.expander("💌 Góp ý & Báo lỗi"):
             )
 
 # ==============================================================================
-# MỤC 2: TỰ ĐỘNG ĐỌC FILE tuyen-dung.html VÀ MỞ BẰNG BASE64 URI DATA
-# (LUÔN HIỂN THỊ Ở CHÂN TRANG)
+# MỤC 2: NÚT TUYỂN DỤNG ĐIỀU HƯỚNG TỚI TRANG CON CỦA STREAMLIT
 # ==============================================================================
-recruitment_html_content = ""
-if os.path.exists("tuyen-dung.html"):
-    with open("tuyen-dung.html", "r", encoding="utf-8") as f:
-        recruitment_html_content = f.read()
-
-# Chuyển đổi mã QR Zalo cục bộ thành base64 nhúng thẳng vào file HTML (nếu có)
-for img_name in ["zalo_qr.jpg", "zalo_qr.png", "zalo_qr.jpeg"]:
-    if os.path.exists(img_name):
-        with open(img_name, "rb") as qrf:
-            b64_zalo = base64.b64encode(qrf.read()).decode()
-            recruitment_html_content = recruitment_html_content.replace(
-                'src="zalo_qr.jpg"', f'src="data:image/jpeg;base64,{b64_zalo}"'
-            )
-        break
-
-# Mã hóa toàn bộ trang tuyen-dung.html thành data URL để mở tab mới độc lập
-b64_page = base64.b64encode(recruitment_html_content.encode("utf-8")).decode("utf-8")
-data_url_target = f"data:text/html;base64,{b64_page}"
-
 st.markdown(
-    f"""
-    <a href="{data_url_target}" target="_blank" rel="noopener noreferrer" class="recruitment-link-card">
+    """
+    <a href="/Tuyển_Dụng" target="_blank" rel="noopener noreferrer" class="recruitment-link-card">
         <div style="display: flex; align-items: center;">
             <span class="recruitment-badge">HOT</span>
             <span class="recruitment-title">🔥 TUYỂN DỤNG NHÂN SỰ TIẾNG NHẬT TỪ N3 — KHÔNG YÊU CẦU KINH NGHIỆM</span>
