@@ -345,6 +345,149 @@ def convert_to_furigana_html(text: str) -> str:
 
 
 # ==============================================================================
+# HÀM TẠO FILE XUẤT IN PDF (HTML PRINT)
+# ==============================================================================
+def generate_pdf_html(data_obj, include_furigana=True):
+    topic = data_obj.get("summary", {}).get("topic", "Bài đọc tiếng Nhật")
+    level = data_obj.get("summary", {}).get("estimated_jlpt_level", "N/A")
+    paragraphs = data_obj.get("paragraphs", [])
+
+    body_items = ""
+    for idx, p in enumerate(paragraphs):
+        jp_content = (
+            p.get("furigana_html", "")
+            if include_furigana
+            else p.get("original_text", "")
+        )
+        vi_trans = p.get("vietnamese_translation", "")
+        body_items += f"""
+        <div class="paragraph-card">
+            <div class="para-badge">Đoạn {idx + 1}</div>
+            <div class="jp-text">{jp_content}</div>
+            <div class="vi-text">🇻🇳 <b>Dịch:</b> {vi_trans}</div>
+        </div>
+        """
+
+    html_template = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{topic}</title>
+    <style>
+        @page {{ size: A4; margin: 15mm 15mm; }}
+        body {{
+            font-family: 'Segoe UI', Arial, 'Hiragino Mincho Pro', 'Yu Mincho', sans-serif;
+            color: #2c3e50;
+            line-height: 1.6;
+            margin: 0;
+            padding: 10px;
+            background-color: #fafafa;
+        }}
+        .container {{
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }}
+        .header-box {{
+            border-bottom: 2px solid #ff758c;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }}
+        .doc-title {{
+            font-size: 20px;
+            font-weight: bold;
+            color: #d81b60;
+            margin: 0;
+        }}
+        .meta-tag {{
+            background: #fff0f3;
+            color: #d81b60;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            border: 1px solid #ffccd5;
+        }}
+        .paragraph-card {{
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px dashed #e0e0e0;
+            page-break-inside: avoid;
+        }}
+        .para-badge {{
+            font-size: 11px;
+            font-weight: bold;
+            color: #888;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }}
+        .jp-text {{
+            font-size: 16px;
+            line-height: 2.2;
+            color: #111;
+            margin-bottom: 8px;
+            font-family: 'Hiragino Mincho Pro', 'Yu Mincho', 'MS Mincho', serif;
+        }}
+        ruby {{ font-size: 16px; }}
+        rt {{ font-size: 9.5px; color: #d81b60; font-weight: normal; }}
+        .vi-text {{
+            background: #fff8e1;
+            border-left: 4px solid #ff9800;
+            padding: 8px 12px;
+            border-radius: 0 6px 6px 0;
+            font-size: 13.5px;
+            color: #d84315;
+            margin-top: 6px;
+        }}
+        .footer {{
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+            margin-top: 25px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }}
+        @media print {{
+            .no-print {{ display: none !important; }}
+            body {{ padding: 0; background: #fff; }}
+            .container {{ box-shadow: none; padding: 0; max-width: 100%; }}
+            * {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="no-print" style="background: #e8f5e9; border: 1px solid #a5d6a7; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #2e7d32; font-weight: bold; font-size: 14px;">🌿 Bản xem trước in PDF đã sẵn sàng!</span>
+            <button onclick="window.print()" style="background: #d81b60; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">🖨️ In hoặc Lưu về máy (Ctrl + P / ⌘ + P)</button>
+        </div>
+        
+        <div class="header-box">
+            <div>
+                <h1 class="doc-title">🌸 {topic}</h1>
+                <div style="font-size: 12px; color: #666; margin-top: 4px;">Tài liệu Luyện đọc & Dịch nghĩa tiếng Nhật JLPT</div>
+            </div>
+            <div class="meta-tag">Cấp độ: {level}</div>
+        </div>
+        
+        {body_items}
+        
+        <div class="footer">
+            Trang web Luyện Đọc & Phân Tích Tiếng Nhật JLPT
+        </div>
+    </div>
+</body>
+</html>"""
+    return html_template
+
+
+# ==============================================================================
 # QUY TẮC CÂU HỎI THEO ĐỘ DÀI
 # ==============================================================================
 def determine_question_rules(text: str):
@@ -572,7 +715,7 @@ if analyze_btn:
                 st.error(f"Đã xảy ra lỗi: {str(e)}")
 
 # ==============================================================================
-# HIỂN THỊ KẾT QUẢ
+# HIỂN THỊ KẾT QUẢ PHÂN TÍCH (NẾU ĐÃ PHÂN TÍCH)
 # ==============================================================================
 if st.session_state.analysis_data and isinstance(
     st.session_state.analysis_data, dict
@@ -605,10 +748,295 @@ if st.session_state.analysis_data and isinstance(
         f"❓ Đề thi JLPT ({len(questions)} câu)",
     ])
 
+    # Tab 1: Bài đọc & Dịch + Tùy chọn In/Lưu PDF
     with tab_read:
-        show_furigana = st.toggle("🌸 Bật Furigana", value=True)
+        ctrl_col1, ctrl_col2 = st.columns([1.2, 3.8])
+        with ctrl_col1:
+            show_furigana = st.toggle("🌸 Bật Furigana", value=True)
+        with ctrl_col2:
+            with st.popover("📄 Xuất file PDF bài đọc & bản dịch"):
+                st.markdown("#### ⚙️ Tùy chọn xuất PDF")
+                pdf_furigana_opt = st.radio(
+                    "Định dạng nội dung tiếng Nhật khi in/lưu PDF:",
+                    ["Kèm Furigana (phiên âm trên chữ Hán)", "Không kèm Furigana (chữ Kanji thuần)"],
+                    index=0,
+                )
+                include_furi = True if "Kèm Furigana" in pdf_furigana_opt else False
+                pdf_html_content = generate_pdf_html(data, include_furigana=include_furi)
+                pdf_b64 = base64.b64encode(pdf_html_content.encode("utf-8")).decode("utf-8")
+                download_href = f'<a href="data:text/html;base64,{pdf_b64}" target="_blank" style="display: inline-block; background-color: #d81b60; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 8px;">🖨️ Mở trang In / Lưu PDF ngay</a>'
+                st.markdown(download_href, unsafe_allow_html=True)
+                st.caption("💡 *Bấm vào nút trên để mở trang in chuẩn A4, sau đó nhấn **Ctrl+P** (hoặc **Lưu dưới dạng PDF**) để tải về máy.*")
+
+        st.markdown("---")
+
         paragraphs = (
             data.get("paragraphs", [])
             if isinstance(data.get("paragraphs"), list)
             else []
         )
+        for p in paragraphs:
+            if isinstance(p, dict):
+                if show_furigana:
+                    st.markdown(
+                        f"<div>{p.get('furigana_html', '')}</div>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        f"<div class='plain-jp-text'>{p.get('original_text', '')}</div>",
+                        unsafe_allow_html=True,
+                    )
+                st.markdown(
+                    "<div class='vi-translation-box'>🇻🇳 <strong>Dịch"
+                    f" nghĩa:</strong> {p.get('vietnamese_translation', '')}</div>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    "<div style='margin-bottom: 15px;'></div>",
+                    unsafe_allow_html=True,
+                )
+
+        if st.session_state.raw_audio_b64:
+            st.markdown(
+                f"""
+            <div class="sticky-audio-bar">
+                <span style="font-size: 0.9rem; font-weight: 700; color: #d81b60;">🎙️ Giọng đọc chuẩn Tokyo (NHK):</span>
+                <audio id="floating_player" controls style="height: 38px; max-width: 400px; flex-grow: 1;">
+                    <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
+                </audio>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.82rem; font-weight: 600;">⚡ Tốc độ:</span>
+                    <select id="speed_select" onchange="document.getElementById('floating_player').playbackRate = this.value;" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600;">
+                        <option value="0.75">x0.75</option>
+                        <option value="1.0" selected>x1.0</option>
+                        <option value="1.25">x1.25</option>
+                        <option value="1.5">x1.5</option>
+                    </select>
+                </div>
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
+    # Tab 2: Ngữ pháp
+    with tab_grammar:
+        grammars = (
+            data.get("grammar_analysis", [])
+            if isinstance(data.get("grammar_analysis"), list)
+            else []
+        )
+        if not grammars:
+            st.info("Không có mẫu ngữ pháp đặc biệt nào.")
+        for g in grammars:
+            if isinstance(g, dict):
+                p_text = g.get("pattern", "")
+                l_text = g.get("jlpt_level", "")
+                m_text = g.get("meaning", "")
+                exp_title = f"📌 {p_text} [{l_text}] — {m_text}"
+                with st.expander(exp_title, expanded=True):
+                    st.markdown(
+                        f"- **Ngữ cảnh trong bài:** `{g.get('usage_in_text', '')}`"
+                    )
+                    st.markdown(
+                        f"- **Giải thích chi tiết:** {g.get('explanation', '')}"
+                    )
+
+    # Tab 3: Từ vựng
+    with tab_vocab:
+        vocabs = (
+            data.get("vocabulary_list", [])
+            if isinstance(data.get("vocabulary_list"), list)
+            else []
+        )
+        if vocabs:
+            vocab_rows = [
+                {
+                    "Từ vựng / Cụm từ": v.get("word", ""),
+                    "Cách đọc (Kana)": v.get("reading", ""),
+                    "Cấp độ": v.get("jlpt_level", ""),
+                    "Từ loại": v.get("part_of_speech", ""),
+                    "Ý nghĩa trong bài": v.get("vietnamese_meaning", ""),
+                }
+                for v in vocabs
+                if isinstance(v, dict)
+            ]
+            st.dataframe(vocab_rows, use_container_width=True, hide_index=True)
+        else:
+            st.info("Chưa có danh sách từ vựng.")
+
+    # Tab 4: Kanji
+    with tab_kanji:
+        kanjis = (
+            data.get("kanji_list", [])
+            if isinstance(data.get("kanji_list"), list)
+            else []
+        )
+        if kanjis:
+            kanji_rows = [
+                {
+                    "Hán tự": k.get("kanji", ""),
+                    "Âm Hán Việt": k.get("han_viet", ""),
+                    "Cấp độ": k.get("jlpt_level", ""),
+                    "Âm On": k.get("onyomi", ""),
+                    "Âm Kun": k.get("kunyomi", ""),
+                    "Ý nghĩa": k.get("meaning", ""),
+                }
+                for k in kanjis
+                if isinstance(k, dict)
+            ]
+            st.dataframe(kanji_rows, use_container_width=True, hide_index=True)
+        else:
+            st.info("Chưa có danh sách Hán tự.")
+
+    # Tab 5: Đề thi JLPT
+    with tab_quiz:
+        st.markdown(f"### ✍️ Đề thi thử JLPT ({len(questions)} câu hỏi)")
+        for idx, q in enumerate(questions):
+            if isinstance(q, dict):
+                q_num = q.get("question_number", idx + 1)
+                category = q.get("category", "Đọc hiểu")
+
+                badge_class = "badge-author"
+                if "từ vựng" in category.lower() or "kanji" in category.lower():
+                    badge_class = "badge-vocab"
+                elif "ngữ pháp" in category.lower():
+                    badge_class = "badge-grammar"
+
+                st.markdown(
+                    f"<span class='badge-category {badge_class}'>🏷️"
+                    f" {category}</span>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"#### Câu {q_num}: {q.get('question_text', '')}"
+                )
+                st.caption(f"*(Dịch nghĩa: {q.get('question_vietnamese', '')})*")
+
+                opts = (
+                    q.get("options", {})
+                    if isinstance(q.get("options"), dict)
+                    else {}
+                )
+                choice_keys = [k for k in ["A", "B", "C", "D"] if k in opts]
+
+                user_choice = st.radio(
+                    f"Chọn phương án đúng cho câu {q_num}:",
+                    options=choice_keys,
+                    format_func=lambda x: f"{x}. {opts.get(x, '')}",
+                    key=f"quiz_radio_{q_num}",
+                    index=None,
+                )
+
+                correct_ans = q.get("correct_answer", "A")
+                opt_analysis = (
+                    q.get("option_analysis", {})
+                    if isinstance(q.get("option_analysis"), dict)
+                    else {}
+                )
+
+                if user_choice is not None:
+                    if user_choice == correct_ans:
+                        st.success(
+                            "🎉 **Chính xác!** Đáp án đúng là"
+                            f" **{correct_ans}**."
+                        )
+                    else:
+                        st.error(
+                            f"❌ **Chưa chính xác!** Bạn chọn **{user_choice}**,"
+                            f" đáp án chuẩn là **{correct_ans}**."
+                        )
+
+                    st.markdown(
+                        "**🔍 Phân tích chi tiết từng phương án & bẫy tư"
+                        " duy:**"
+                    )
+                    for opt_k in choice_keys:
+                        explanation_text = opt_analysis.get(
+                            opt_k, "Chưa có phân tích."
+                        )
+                        if opt_k == correct_ans:
+                            st.markdown(
+                                f"- ✅ **Phương án {opt_k} (ĐÚNG):**"
+                                f" {explanation_text}"
+                            )
+                        else:
+                            st.markdown(
+                                f"- ❌ **Phương án {opt_k} (SAI):**"
+                                f" {explanation_text}"
+                            )
+                st.markdown("---")
+
+# ==============================================================================
+# MỤC 1: FORM PHẢN HỒI (LUÔN HIỂN THỊ Ở CHÂN TRANG)
+# ==============================================================================
+st.markdown("<br><hr>", unsafe_allow_html=True)
+with st.expander("💌 Góp ý & Báo lỗi"):
+    with st.form("feedback_form", clear_on_submit=True):
+        fb_name = st.text_input("Tên hoặc Email (không bắt buộc):")
+        fb_type = st.selectbox(
+            "Loại góp ý:",
+            [
+                "Báo lỗi Furigana / AI",
+                "Lỗi giọng đọc",
+                "Đề xuất tính năng mới",
+                "Khác",
+            ],
+        )
+        fb_content = st.text_area(
+            "Nội dung:", placeholder="Mô tả ý kiến của bạn..."
+        )
+        submitted = st.form_submit_button("📩 Gửi ý kiến")
+        if submitted and fb_content.strip():
+            if sheet_webhook_url:
+                try:
+                    payload = {
+                        "time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                        "name": fb_name.strip() if fb_name.strip() else "Ẩn danh",
+                        "type": fb_type,
+                        "content": fb_content,
+                    }
+                    requests.post(sheet_webhook_url, json=payload, timeout=5)
+                except Exception:
+                    pass
+            st.success(
+                "🌸 Cảm ơn bạn! Ý kiến đóng góp đã được gửi thành công."
+            )
+
+# ==============================================================================
+# MỤC 2: TỰ ĐỘNG ĐỌC FILE tuyen-dung.html VÀ MỞ BẰNG BASE64 URI DATA
+# (LUÔN HIỂN THỊ Ở CHÂN TRANG)
+# ==============================================================================
+recruitment_html_content = ""
+if os.path.exists("tuyen-dung.html"):
+    with open("tuyen-dung.html", "r", encoding="utf-8") as f:
+        recruitment_html_content = f.read()
+
+# Chuyển đổi mã QR Zalo cục bộ thành base64 nhúng thẳng vào file HTML (nếu có)
+for img_name in ["zalo_qr.jpg", "zalo_qr.png", "zalo_qr.jpeg"]:
+    if os.path.exists(img_name):
+        with open(img_name, "rb") as qrf:
+            b64_zalo = base64.b64encode(qrf.read()).decode()
+            recruitment_html_content = recruitment_html_content.replace(
+                'src="zalo_qr.jpg"', f'src="data:image/jpeg;base64,{b64_zalo}"'
+            )
+        break
+
+# Mã hóa toàn bộ trang tuyen-dung.html thành data URL để mở tab mới độc lập
+b64_page = base64.b64encode(recruitment_html_content.encode("utf-8")).decode("utf-8")
+data_url_target = f"data:text/html;base64,{b64_page}"
+
+st.markdown(
+    f"""
+    <a href="{data_url_target}" target="_blank" rel="noopener noreferrer" class="recruitment-link-card">
+        <div style="display: flex; align-items: center;">
+            <span class="recruitment-badge">HOT</span>
+            <span class="recruitment-title">🔥 TUYỂN DỤNG NHÂN SỰ TIẾNG NHẬT TỪ N3 — KHÔNG YÊU CẦU KINH NGHIỆM</span>
+        </div>
+        <div class="recruitment-btn">
+            Xem chi tiết ➔
+        </div>
+    </a>
+    """,
+    unsafe_allow_html=True,
+)
