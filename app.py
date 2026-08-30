@@ -3,6 +3,7 @@ import base64
 from datetime import datetime
 import io
 import json
+import os
 import re
 import google.generativeai as genai
 import requests
@@ -205,6 +206,7 @@ st.markdown(
 # Lấy API Key và Webhook URL
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 sheet_webhook_url = st.secrets.get("GOOGLE_SHEET_WEBHOOK_URL", "")
+canva_url = st.secrets.get("CANVA_RECRUITMENT_URL", "https://www.canva.com")
 
 if not api_key:
     api_key = st.sidebar.text_input(
@@ -752,7 +754,9 @@ if st.session_state.analysis_data and isinstance(
                             )
                 st.markdown("---")
 
-# Form phản hồi
+# ==============================================================================
+# MỤC 1: FORM PHẢN HỒI
+# ==============================================================================
 st.markdown("<br><hr>", unsafe_allow_html=True)
 with st.expander("💌 Góp ý & Báo lỗi"):
     with st.form("feedback_form", clear_on_submit=True):
@@ -785,3 +789,244 @@ with st.expander("💌 Góp ý & Báo lỗi"):
             st.success(
                 "🌸 Cảm ơn bạn! Ý kiến đóng góp đã được gửi thành công."
             )
+
+# ==============================================================================
+# MỤC 2: KHU VỰC TUYỂN DỤNG SLIDE CAROUSEL + QR ZALO + LINK CANVA
+# ==============================================================================
+# Đọc ảnh QR Zalo nếu tồn tại
+qr_img_src = ""
+for img_name in ["zalo_qr.jpg", "zalo_qr.png", "zalo_qr.jpeg"]:
+    if os.path.exists(img_name):
+        with open(img_name, "rb") as img_file:
+            b64_qr = base64.b64encode(img_file.read()).decode()
+            qr_img_src = f"data:image/jpeg;base64,{b64_qr}"
+        break
+
+# Dự phòng nếu chưa có ảnh QR cục bộ
+if not qr_img_src:
+    qr_img_src = "[https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://zalo.me](https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://zalo.me)"
+
+st.markdown(
+    f"""
+<style>
+    .job-carousel-container {{
+        width: 100%;
+        margin-top: 15px;
+        background: #ffffff;
+        border: 2px solid #ffccd5;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(216, 27, 96, 0.08);
+        font-family: inherit;
+    }}
+    .job-carousel-header {{
+        background: linear-gradient(135deg, #d81b60 0%, #ff4081 100%);
+        color: #ffffff;
+        padding: 12px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }}
+    .job-carousel-header h3 {{
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #ffffff !important;
+        letter-spacing: -0.3px;
+    }}
+    .canva-link-btn {{
+        background: #ffffff;
+        color: #d81b60 !important;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        transition: all 0.2s;
+    }}
+    .canva-link-btn:hover {{
+        background: #fff0f3;
+        transform: translateY(-1px);
+    }}
+    
+    /* Carousel CSS Animation */
+    .slider-wrapper {{
+        position: relative;
+        width: 100%;
+        height: 240px;
+        overflow: hidden;
+    }}
+    .slider-track {{
+        display: flex;
+        width: 400%;
+        height: 100%;
+        animation: slideAnimation 20s infinite ease-in-out;
+    }}
+    .slider-track:hover {{
+        animation-play-state: paused;
+    }}
+    .slide-item {{
+        width: 25%;
+        height: 100%;
+        padding: 16px 24px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(135deg, #fffafa 0%, #ffffff 100%);
+    }}
+    @keyframes slideAnimation {{
+        0%, 20% {{ transform: translateX(0%); }}
+        25%, 45% {{ transform: translateX(-25%); }}
+        50%, 70% {{ transform: translateX(-50%); }}
+        75%, 95% {{ transform: translateX(-75%); }}
+        100% {{ transform: translateX(0%); }}
+    }}
+    
+    .job-card-grid {{
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        width: 100%;
+    }}
+    .job-mini-box {{
+        background: #ffffff;
+        border: 1px solid #ffe0e6;
+        border-left: 4px solid #d81b60;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+    }}
+    .job-mini-box strong {{
+        color: #d81b60;
+    }}
+    .qr-contact-box {{
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        background: #fff5f7;
+        padding: 12px 20px;
+        border-radius: 10px;
+        border: 1px dashed #ff80ab;
+        width: 100%;
+    }}
+    .qr-contact-box img {{
+        width: 130px;
+        height: 130px;
+        object-fit: contain;
+        border-radius: 8px;
+        background: white;
+        padding: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }}
+    .badge-hl {{
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        margin-right: 4px;
+    }}
+</style>
+
+<div class="job-carousel-container">
+    <div class="job-carousel-header">
+        <h3>🔥 TUYỂN DỤNG NHÂN SỰ TIẾNG NHẬT TỪ N3 — KHÔNG YÊU CẦU KINH NGHIỆM</h3>
+        <a href="{canva_url}" target="_blank" rel="noopener noreferrer" class="canva-link-btn">
+            🎨 Xem Infographic trên Canva ➔
+        </a>
+    </div>
+    
+    <div class="slider-wrapper">
+        <div class="slider-track">
+            <!-- SLIDE 1: TỔNG QUAN -->
+            <div class="slide-item">
+                <div style="flex: 1;">
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #d81b60; margin-bottom: 6px;">
+                        🏢 16 Vị trí Kiến trúc & Xây dựng — Nhận việc T10/2026
+                    </div>
+                    <div style="font-size: 0.9rem; color: #444; line-height: 1.5;">
+                        Bạn học Kiến trúc / Xây dựng, có tiếng Nhật N3+ và đang tìm công việc đúng chuyên môn, được đào tạo từ đầu?
+                    </div>
+                    <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                        <span class="badge-hl">✅ Không yêu cầu kinh nghiệm</span>
+                        <span class="badge-hl">✅ ĐH / CĐ / Senmon</span>
+                        <span class="badge-hl">✅ Đào tạo chuyên môn bài bản</span>
+                        <span class="badge-hl">📍 Đống Đa, Hà Nội</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 2: 4 VỊ TRÍ TUYỂN DỤNG -->
+            <div class="slide-item">
+                <div class="job-card-grid">
+                    <div class="job-mini-box">
+                        <strong>🏠 Thiết kế Kiến trúc (09 slot)</strong><br>
+                        • N3+ | ~12tr Gross<br>
+                        • Hiệu chỉnh bản vẽ nhà lắp ghép tiêu chuẩn Nhật
+                    </div>
+                    <div class="job-mini-box">
+                        <strong>📐 Xử lý Số liệu ngoài tiêu chuẩn (02 slot)</strong><br>
+                        • N3+ | ~12tr Gross<br>
+                        • Ưu tiên biết AutoCAD, chỉnh sửa bản vẽ chi tiết
+                    </div>
+                    <div class="job-mini-box">
+                        <strong>🧮 Tính toán Nguyên vật liệu (02 slot)</strong><br>
+                        • N3+ | ~12tr Gross<br>
+                        • Bóc tách & tính vật liệu từ dữ liệu thiết kế Nhật
+                    </div>
+                    <div class="job-mini-box">
+                        <strong>💻 BIM Kiến trúc (03 slot)</strong><br>
+                        • N2+ (hoặc N3 có nền kỹ thuật) | Lương Deal<br>
+                        • Dựng mô hình 3D, cơ hội tham gia phiên dịch dự án
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 3: QUYỀN LỢI & ĐÃI NGỘ -->
+            <div class="slide-item">
+                <div style="flex: 1;">
+                    <div style="font-weight: 700; color: #d81b60; margin-bottom: 8px; font-size: 1rem;">
+                        🎁 Chế độ đãi ngộ & Môi trường làm việc:
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.85rem; color: #333;">
+                        <div>• Thưởng tháng 13 + thưởng đặc biệt cuối năm</div>
+                        <div>• Thưởng kinh doanh + lương OT đầy đủ</div>
+                        <div>• Hỗ trợ 100% chi phí nâng cao tiếng Nhật</div>
+                        <div>• Cơ hội đào tạo / công tác tại Nhật Bản</div>
+                        <div>• Đầy đủ BHXH, BHYT + khám sức khỏe định kỳ</div>
+                        <div>• Làm việc T2 – T6 (8:00 – 17:00, nghỉ T7-CN)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 4: LIÊN HỆ & QUÉT QR ZALO -->
+            <div class="slide-item">
+                <div class="qr-contact-box">
+                    <img src="{qr_img_src}" alt="Zalo QR Hân Nguyễn">
+                    <div>
+                        <div style="font-size: 1.05rem; font-weight: 800; color: #d81b60; margin-bottom: 4px;">
+                            📲 Liên hệ trực tiếp: Hân Nguyễn (HR)
+                        </div>
+                        <div style="font-size: 0.86rem; color: #555; line-height: 1.4;">
+                            Quét mã QR Zalo bên cạnh để gửi CV hoặc nhận tư vấn chi tiết về từng vị trí.
+                        </div>
+                        <div style="margin-top: 8px; font-size: 0.82rem; font-weight: 700; color: #c2185b;">
+                            ⏰ Hạn nhận CV: 11/09/2026 | 🚀 Đi làm: Đầu T10/2026
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
