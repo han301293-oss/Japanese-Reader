@@ -465,11 +465,12 @@ CÁC NGUYÊN TẮC QUAN TRỌNG:
    - Phần Okurigana để NGOÀI thẻ ruby.
    - Thẻ `<rt>` 100% CHỈ CHỨA CHỮ HIRAGANA THUẦN TÚY (tuyệt đối không chứa chữ Hán hay ký tự khác).
 2. DỊCH THUẬT: Dịch thoát ý, tự nhiên, chuẩn xác sang tiếng Việt.
-3. TỪ VỰNG & KANJI:
-   - Trích xuất 8 đến 15 từ vựng/cụm từ then chốt (Collocations, quán dụng ngữ, động từ ghép).
-   - Trích xuất 6 đến 10 Chữ Hán (Kanji) tiêu biểu nhất kèm Âm Hán Việt, On/Kun và ý nghĩa.
-4. NGỮ PHÁP: Trích xuất 3 đến 6 mẫu ngữ pháp trọng tâm, trích dẫn câu trong bài kèm nghĩa tiếng Việt trong ngoặc `( )`.
-5. ĐỀ THI JLPT: 4 phương án A, B, C, D rõ ràng, có phân tích cụ thể tại sao đúng và tại sao 3 đáp án còn lại sai.
+3. TỪ VỰNG: Trích xuất 8 đến 15 từ vựng/cụm từ then chốt (Collocations, quán dụng ngữ, động từ ghép).
+4. HÁN TỰ (KANJI): 
+   - Trích xuất từ 10 đến 20 Chữ Hán (Kanji) tiêu biểu nhất xuất hiện trong bài đọc kèm Âm Hán Việt, On/Kun và ý nghĩa.
+   - Nếu bài đọc quá ngắn hoặc có ít chữ Hán, không bắt buộc đạt mốc 10 chữ mà hãy trích xuất mở rộng tối đa tất cả các chữ Hán có giá trị học tập trong bài.
+5. NGỮ PHÁP: Trích xuất 3 đến 6 mẫu ngữ pháp trọng tâm, trích dẫn câu trong bài kèm nghĩa tiếng Việt trong ngoặc `( )`.
+6. ĐỀ THI JLPT: 4 phương án A, B, C, D rõ ràng, có phân tích cụ thể tại sao đúng và tại sao 3 đáp án còn lại sai.
 
 JSON Schema bắt buộc:
 {{
