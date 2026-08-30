@@ -282,7 +282,7 @@ if "raw_audio_b64" not in st.session_state:
 user_text = st.text_area(
     "📋 Dán bài đọc tiếng Nhật vào đây:",
     height=160,
-    placeholder="例：私たちの意識は、言葉とイメージの網の目をふわふわ漂っているようなものである。それが言葉や文章に定着したとき、「考え」というものになる...",
+    placeholder="例：私たちの意識は、言葉とイメージの網の目をふわふわ漂っているようなものである...",
 )
 
 analyze_btn = st.button("🚀 Phân tích bài đọc", type="primary", use_container_width=True)
@@ -558,38 +558,4 @@ def fetch_gemini_analysis(text: str, key: str):
 
     model = genai.GenerativeModel(
         model_name="gemini-3.6-flash",
-        generation_config=gen_cfg,
-    )
-
-    prompt = build_system_prompt(p_type, n_int, n_voc, n_gra, tot_q)
-    response = model.generate_content(f"{prompt}\n\nVăn bản cần phân tích:\n{text}")
-    return clean_and_parse_json(response.text)
-
-
-@st.cache_data(show_spinner=False, ttl=86400)
-def fetch_nhk_audio(text: str):
-    return generate_nhk_voice_sync(text)
-
-
-# ==============================================================================
-# XỬ LÝ PHÂN TÍCH SONG SONG (PARALLEL EXECUTION)
-# ==============================================================================
-if analyze_btn:
-    if not api_key:
-        st.error("⚠️ Vui lòng cấu hình Gemini API Key để tiếp tục.")
-    elif not user_text.strip():
-        st.warning("⚠️ Vui lòng dán nội dung bài đọc trước khi bấm phân tích.")
-    else:
-        p_type, char_len, _, _, _, tot_q = determine_question_rules(user_text)
-
-        with st.spinner(f"⚡ Đang tăng tốc phân tích {p_type} ({char_len} ký tự) & tạo {tot_q} câu hỏi JLPT..."):
-            try:
-                with ThreadPoolExecutor(max_workers=2) as executor:
-                    future_ai = executor.submit(fetch_gemini_analysis, user_text, api_key)
-                    future_audio = executor.submit(fetch_nhk_audio, user_text)
-
-                    result = future_ai.result()
-                    audio_data = future_audio.result()
-
-                if not result:
-                    st.error("⚠️ AI trả về dữ liệu chưa chuẩn cấu trúc. V
+        generation
