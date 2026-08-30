@@ -1,5 +1,5 @@
 streamlit
 google-generativeai
 edge-tts
-pykakasi
+pykakasi==2.2.1
 requests
