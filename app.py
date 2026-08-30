@@ -3,6 +3,7 @@ import base64
 from datetime import datetime
 import io
 import json
+import os
 import re
 import google.generativeai as genai
 import requests
@@ -169,7 +170,7 @@ st.markdown(
     }
     @media (prefers-color-scheme: dark) {
         .sticky-audio-bar {
-            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(255, 117, 140, 0.25));
+            background: linear-gradient(135deg, rgba(40, 18, 28, 0.98), rgba(255, 10, 20, 0.98));
             border-top: 2px solid #ff758c;
             box-shadow: 0 -4px 18px rgba(255, 117, 140, 0.25);
         }
@@ -836,19 +837,28 @@ with st.expander("💌 Góp ý & Báo lỗi"):
             )
 
 # ==============================================================================
-# MỤC 2: THANH NÚT TUYỂN DỤNG (Mở file tuyen-dung.html)
+# MỤC 2: TỰ ĐỘNG ĐỌC FILE tuyen-dung.html VÀ MỞ BẰNG BASE64 URI DATA
 # ==============================================================================
+recruitment_html_content = ""
+if os.path.exists("tuyen-dung.html"):
+    with open("tuyen-dung.html", "r", encoding="utf-8") as f:
+        recruitment_html_content = f.read()
+
+# Chuyển đổi mã QR Zalo cục bộ thành base64 nhúng thẳng vào file HTML (nếu có)
+if os.path.exists("zalo_qr.jpg"):
+    with open("zalo_qr.jpg", "rb") as qrf:
+        b64_zalo = base64.b64encode(qrf.read()).decode()
+        recruitment_html_content = recruitment_html_content.replace(
+            'src="zalo_qr.jpg"', f'src="data:image/jpeg;base64,{b64_zalo}"'
+        )
+
+# Mã hóa toàn bộ trang tuyen-dung.html thành data URL để mở tab mới không bị Streamlit chặn
+b64_page = base64.b64encode(recruitment_html_content.encode("utf-8")).decode("utf-8")
+data_url_target = f"data:text/html;base64,{b64_page}"
+
 st.markdown(
-    """
-    <a href="tuyen-dung.html" target="_blank" rel="noopener noreferrer" class="recruitment-link-card">
+    f"""
+    <a href="{data_url_target}" target="_blank" rel="noopener noreferrer" class="recruitment-link-card">
         <div style="display: flex; align-items: center;">
             <span class="recruitment-badge">HOT</span>
-            <span class="recruitment-title">🔥 TUYỂN DỤNG NHÂN SỰ TIẾNG NHẬT TỪ N3 — KHÔNG YÊU CẦU KINH NGHIỆM</span>
-        </div>
-        <div class="recruitment-btn">
-            Xem chi tiết ➔
-        </div>
-    </a>
-    """,
-    unsafe_allow_html=True,
-)
+            <span class="recruitment-title">🔥 TUYỂN DỤNG NHÂN SỰ TIẾNG NHẬT TỪ N3 — KHÔNG
