@@ -5,6 +5,7 @@ import io
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt, RGBColor
@@ -17,7 +18,6 @@ import streamlit as st
 # ==============================================================================
 try:
     import pykakasi
-
     KAKASI_AVAILABLE = True
     _kakasi_instance = pykakasi.kakasi()
 except Exception:
@@ -26,7 +26,6 @@ except Exception:
 
 try:
     import edge_tts
-
     EDGE_TTS_AVAILABLE = True
 except Exception:
     EDGE_TTS_AVAILABLE = False
@@ -253,7 +252,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Lấy API Key và Webhook URL
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 sheet_webhook_url = st.secrets.get("GOOGLE_SHEET_WEBHOOK_URL", "")
 
@@ -262,7 +260,6 @@ if not api_key:
         "🔑 Nhập Gemini API Key của bạn:", type="password"
     )
 
-# Khởi tạo session_state
 if "analysis_data" not in st.session_state:
     st.session_state.analysis_data = None
 if "current_user_text" not in st.session_state:
@@ -282,9 +279,8 @@ analyze_btn = st.button(
     "🚀 Phân tích bài đọc", type="primary", use_container_width=True
 )
 
-
 # ==============================================================================
-# HÀM XỬ LÝ FURIGANA BẰNG THUẬT TOÁN OKURIGANA
+# HÀM XỬ LÝ FURIGANA
 # ==============================================================================
 def token_to_ruby(orig: str, hira: str) -> str:
     if orig == hira or not orig:
@@ -363,14 +359,12 @@ def generate_docx_file(data_obj):
     level = data_obj.get("summary", {}).get("estimated_jlpt_level", "N/A")
     paragraphs = data_obj.get("paragraphs", [])
 
-    # Tiêu đề tài liệu
     title_p = doc.add_paragraph()
     title_run = title_p.add_run(f"🌸 {topic}")
     title_run.font.size = Pt(16)
     title_run.font.bold = True
     title_run.font.color.rgb = RGBColor(216, 27, 96)
 
-    # Thông tin meta
     meta_p = doc.add_paragraph()
     meta_run = meta_p.add_run(
         f"Trình độ ước tính: {level} | Ngày tạo:"
@@ -382,7 +376,6 @@ def generate_docx_file(data_obj):
 
     doc.add_paragraph("-" * 55)
 
-    # Thêm từng đoạn
     for idx, p in enumerate(paragraphs):
         para_title = doc.add_paragraph()
         para_title_run = para_title.add_run(f"Đoạn {idx + 1}:")
@@ -390,13 +383,11 @@ def generate_docx_file(data_obj):
         para_title_run.font.bold = True
         para_title_run.font.color.rgb = RGBColor(194, 24, 91)
 
-        # Câu tiếng Nhật
         jp_p = doc.add_paragraph()
         jp_run = jp_p.add_run(p.get("original_text", ""))
         jp_run.font.size = Pt(12)
         jp_run.font.name = "Meiryo"
 
-        # Bản dịch tiếng Việt
         vi_p = doc.add_paragraph()
         vi_run_lbl = vi_p.add_run("🇻🇳 Dịch nghĩa: ")
         vi_run_lbl.font.bold = True
@@ -414,40 +405,25 @@ def generate_docx_file(data_obj):
 
 
 # ==============================================================================
-# QUY TẮC CÂU HỎI THEO ĐỘ DÀI
+# HÀM BỘ NHỚ ĐỆM & ĐA LUỒNG XỬ LÝ NHANH
 # ==============================================================================
 def determine_question_rules(text: str):
     char_count = len([c for c in text if not c.isspace()])
     if char_count < 350:
         passage_type = "Đoạn văn ngắn (Tanbun)"
-        num_intent = 1
-        num_vocab = 1
-        num_grammar = 1
+        num_intent, num_vocab, num_grammar = 1, 1, 1
     elif char_count <= 800:
         passage_type = "Đoạn văn trung (Chubun)"
-        num_intent = 3
-        num_vocab = 2
-        num_grammar = 2
+        num_intent, num_vocab, num_grammar = 3, 2, 2
     else:
         passage_type = "Bài báo dài (Choubun)"
-        num_intent = 5
-        num_vocab = 3
-        num_grammar = 2
+        num_intent, num_vocab, num_grammar = 5, 3, 2
 
     total_questions = num_intent + num_vocab + num_grammar
-    return (
-        passage_type,
-        char_count,
-        num_intent,
-        num_vocab,
-        num_grammar,
-        total_questions,
-    )
+    return (passage_type, char_count, num_intent, num_vocab, num_grammar, total_questions)
 
 
-def build_system_prompt(
-    passage_type, num_intent, num_vocab, num_grammar, total_questions
-):
+def build_system_prompt(passage_type, num_intent, num_vocab, num_grammar, total_questions):
     return f"""
 Bạn là Chuyên gia Ngôn ngữ học tiếng Nhật và Giảng viên Luyện thi JLPT cao cấp (Cấp độ N1).
 Nhiệm vụ của bạn là tiếp nhận văn bản tiếng Nhật, phân tích chuyên sâu và trả về kết quả DUY NHẤT dưới dạng JSON hợp lệ (không kèm bất kỳ lời dẫn nào ngoài JSON).
@@ -533,9 +509,7 @@ def clean_and_parse_json(raw_text):
     except Exception:
         cleaned = re.sub(
             r"[\x00-\x1f\x7f-\x9f]",
-            lambda m: (
-                " " if m.group(0) not in ["\n", "\r", "\t"] else m.group(0)
-            ),
+            lambda m: (" " if m.group(0) not in ["\n", "\r", "\t"] else m.group(0)),
             text,
         )
         try:
@@ -578,8 +552,30 @@ def generate_nhk_voice_sync(text):
         return None
 
 
+# Cache kết quả AI để tăng tốc tức thì khi phân tích lại
+@st.cache_data(show_spinner=False, ttl=86400)
+def fetch_gemini_analysis(text: str, key: str):
+    p_type, _, n_int, n_voc, n_gra, tot_q = determine_question_rules(text)
+    genai.configure(api_key=key)
+    model = genai.GenerativeModel(
+        model_name="gemini-3.6-flash",
+        generation_config={
+            "response_mime_type": "application/json",
+            "temperature": 0.25, # Giảm nhiệt độ để phản hồi nhanh và chuẩn xác hơn
+        },
+    )
+    prompt = build_system_prompt(p_type, n_int, n_voc, n_gra, tot_q)
+    response = model.generate_content(f"{prompt}\n\nVăn bản cần phân tích:\n{text}")
+    return clean_and_parse_json(response.text)
+
+
+@st.cache_data(show_spinner=False, ttl=86400)
+def fetch_nhk_audio(text: str):
+    return generate_nhk_voice_sync(text)
+
+
 # ==============================================================================
-# XỬ LÝ PHÂN TÍCH
+# XỬ LÝ PHÂN TÍCH SONG SONG (PARALLEL EXECUTION)
 # ==============================================================================
 if analyze_btn:
     if not api_key:
@@ -587,54 +583,33 @@ if analyze_btn:
     elif not user_text.strip():
         st.warning("⚠️ Vui lòng dán nội dung bài đọc trước khi bấm phân tích.")
     else:
-        p_type, char_len, n_int, n_voc, n_gra, tot_q = determine_question_rules(
-            user_text
-        )
+        p_type, char_len, _, _, _, tot_q = determine_question_rules(user_text)
 
-        with st.spinner(
-            f"🌸 Đang phân tích {p_type} ({char_len} ký tự) & tạo {tot_q} câu hỏi"
-            " JLPT..."
-        ):
+        with st.spinner(f"⚡ Đang tăng tốc phân tích {p_type} ({char_len} ký tự) & tạo {tot_q} câu hỏi JLPT..."):
             try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(
-                    model_name="gemini-3.6-flash",
-                    generation_config={"response_mime_type": "application/json"},
-                )
+                # Gọi đồng thời cả AI và tạo Giọng đọc trên 2 luồng riêng biệt
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    future_ai = executor.submit(fetch_gemini_analysis, user_text, api_key)
+                    future_audio = executor.submit(fetch_nhk_audio, user_text)
 
-                prompt = build_system_prompt(
-                    p_type, n_int, n_voc, n_gra, tot_q
-                )
-                response = model.generate_content(
-                    f"{prompt}\n\nVăn bản cần phân tích:\n{user_text}"
-                )
-                result = clean_and_parse_json(response.text)
+                    result = future_ai.result()
+                    audio_data = future_audio.result()
 
                 if not result:
-                    st.error(
-                        "⚠️ AI trả về dữ liệu chưa chuẩn cấu trúc. Vui lòng bấm"
-                        " phân tích lại."
-                    )
+                    st.error("⚠️ AI trả về dữ liệu chưa chuẩn cấu trúc. Vui lòng bấm phân tích lại.")
                 else:
-                    if "paragraphs" in result and isinstance(
-                        result["paragraphs"], list
-                    ):
+                    if "paragraphs" in result and isinstance(result["paragraphs"], list):
                         for p in result["paragraphs"]:
                             if isinstance(p, dict):
                                 orig = p.get("original_text", "")
                                 if KAKASI_AVAILABLE:
-                                    p["furigana_html"] = (
-                                        convert_to_furigana_html(orig)
-                                    )
+                                    p["furigana_html"] = convert_to_furigana_html(orig)
 
                     st.session_state.analysis_data = result
                     st.session_state.current_user_text = user_text
 
-                audio_data = generate_nhk_voice_sync(user_text)
                 if audio_data:
-                    st.session_state.raw_audio_b64 = base64.b64encode(
-                        audio_data
-                    ).decode()
+                    st.session_state.raw_audio_b64 = base64.b64encode(audio_data).decode()
                 else:
                     st.session_state.raw_audio_b64 = None
 
