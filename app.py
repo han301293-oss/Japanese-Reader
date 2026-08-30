@@ -594,3 +594,166 @@ if analyze_btn:
                     st.session_state.current_user_text = user_text
 
                 if audio_data:
+                    st.session_state.raw_audio_b64 = base64.b64encode(audio_data).decode()
+                else:
+                    st.session_state.raw_audio_b64 = None
+
+            except Exception as e:
+                st.error(f"Đã xảy ra lỗi: {str(e)}")
+
+# ==============================================================================
+# HIỂN THỊ KẾT QUẢ PHÂN TÍCH (NẾU ĐÃ CÓ DỮ LIỆU)
+# ==============================================================================
+if st.session_state.analysis_data and isinstance(
+    st.session_state.analysis_data, dict
+):
+    data = st.session_state.analysis_data
+    summary_data = (
+        data.get("summary", {})
+        if isinstance(data.get("summary"), dict)
+        else {}
+    )
+    questions = (
+        data.get("jlpt_practice_questions", [])
+        if isinstance(data.get("jlpt_practice_questions"), list)
+        else []
+    )
+
+    st.success("🎉 Đã phân tích thành công!")
+    sum_col1, sum_col2, sum_col3 = st.columns(3)
+    sum_col1.info(
+        f"🏷️ **Cấp độ ước tính:** {summary_data.get('estimated_jlpt_level', 'N/A')}"
+    )
+    sum_col2.info(f"📖 **Chủ đề:** {summary_data.get('topic', 'Chung')}")
+    sum_col3.info(f"📊 **Đề thi:** {len(questions)} câu hỏi JLPT")
+
+    tab_read, tab_grammar, tab_vocab, tab_kanji, tab_quiz = st.tabs([
+        "📖 Bài đọc & Dịch",
+        "📝 Ngữ pháp trọng tâm",
+        "📚 Từ vựng then chốt",
+        "🈲 Hán tự (Kanji)",
+        f"❓ Đề thi JLPT ({len(questions)} câu)",
+    ])
+
+    with tab_read:
+        ctrl_col1, ctrl_col2 = st.columns([1.2, 3.8])
+        with ctrl_col1:
+            show_furigana = st.toggle("🌸 Bật Furigana", value=True)
+        with ctrl_col2:
+            docx_file = generate_docx_file(data)
+            topic_slug = re.sub(
+                r"[^\w\s-]", "", summary_data.get("topic", "BaiDoc")
+            ).strip()
+            topic_slug = re.sub(r"[-\s]+", "_", topic_slug)
+            st.download_button(
+                label="📥 Tải bài đọc & bản dịch (.docx / Word)",
+                data=docx_file,
+                file_name=f"JLPT_Reading_{topic_slug}.docx",
+                mime=(
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                ),
+                type="secondary",
+            )
+
+        st.markdown("---")
+
+        paragraphs = (
+            data.get("paragraphs", [])
+            if isinstance(data.get("paragraphs"), list)
+            else []
+        )
+        for p in paragraphs:
+            if isinstance(p, dict):
+                if show_furigana:
+                    st.markdown(
+                        f"<div>{p.get('furigana_html', '')}</div>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        f"<div class='plain-jp-text'>{p.get('original_text', '')}</div>",
+                        unsafe_allow_html=True,
+                    )
+                st.markdown(
+                    "<div class='vi-translation-box'>🇻🇳 <strong>Dịch"
+                    f" nghĩa:</strong> {p.get('vietnamese_translation', '')}</div>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    "<div style='margin-bottom: 15px;'></div>",
+                    unsafe_allow_html=True,
+                )
+
+        if st.session_state.raw_audio_b64:
+            st.markdown(
+                f"""
+            <div class="sticky-audio-bar">
+                <span style="font-size: 0.9rem; font-weight: 700; color: #d81b60;">🎙️ Giọng đọc chuẩn Tokyo (NHK):</span>
+                <audio id="floating_player" controls style="height: 38px; max-width: 400px; flex-grow: 1;">
+                    <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
+                </audio>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.82rem; font-weight: 600;">⚡ Tốc độ:</span>
+                    <select id="speed_select" onchange="document.getElementById('floating_player').playbackRate = this.value;" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600; cursor: pointer;">
+                        <option value="0.5">x0.5 (Rất chậm)</option>
+                        <option value="0.75">x0.75 (Chậm)</option>
+                        <option value="1.0" selected>x1.0 (Chuẩn)</option>
+                        <option value="1.25">x1.25 (Nhanh vừa)</option>
+                        <option value="1.5">x1.5 (Nhanh)</option>
+                        <option value="1.75">x1.75 (Rất nhanh)</option>
+                        <option value="2.0">x2.0 (Cực nhanh)</option>
+                    </select>
+                </div>
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
+    with tab_grammar:
+        grammars = (
+            data.get("grammar_analysis", [])
+            if isinstance(data.get("grammar_analysis"), list)
+            else []
+        )
+        if not grammars:
+            st.info("Không có mẫu ngữ pháp đặc biệt nào.")
+        for g in grammars:
+            if isinstance(g, dict):
+                p_text = g.get("pattern", "")
+                l_text = g.get("jlpt_level", "")
+                m_text = g.get("meaning", "")
+                exp_title = f"📌 {p_text} [{l_text}] — {m_text}"
+                with st.expander(exp_title, expanded=True):
+                    st.markdown(
+                        f"- **Ngữ cảnh trong bài:** `{g.get('usage_in_text', '')}`"
+                    )
+                    st.markdown(
+                        f"- **Giải thích chi tiết:** {g.get('explanation', '')}"
+                    )
+
+    with tab_vocab:
+        vocabs = (
+            data.get("vocabulary_list", [])
+            if isinstance(data.get("vocabulary_list"), list)
+            else []
+        )
+        if vocabs:
+            vocab_rows = [
+                {
+                    "Từ vựng / Cụm từ": v.get("word", ""),
+                    "Cách đọc (Kana)": v.get("reading", ""),
+                    "Cấp độ": v.get("jlpt_level", ""),
+                    "Từ loại": v.get("part_of_speech", ""),
+                    "Ý nghĩa trong bài": v.get("vietnamese_meaning", ""),
+                }
+                for v in vocabs
+                if isinstance(v, dict)
+            ]
+            st.dataframe(vocab_rows, use_container_width=True, hide_index=True)
+        else:
+            st.info("Chưa có danh sách từ vựng.")
+
+    with tab_kanji:
+        kanjis = (
+            data.get("kanji_list", [])
+            if isinstance(data.get("kanji_list"),
