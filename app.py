@@ -446,12 +446,10 @@ CÁC NGUYÊN TẮC QUAN TRỌNG:
    - Trích xuất từ 10 đến 20 Chữ Hán (Kanji) tiêu biểu nhất xuất hiện trong bài đọc kèm Âm Hán Việt, On/Kun và ý nghĩa.
    - Nếu bài đọc quá ngắn hoặc có ít chữ Hán, không bắt buộc đạt mốc 10 chữ mà hãy trích xuất mở rộng tối đa tất cả các chữ Hán có giá trị học tập trong bài.
 5. NGỮ PHÁP: Trích xuất 3 đến 6 mẫu ngữ pháp trọng tâm, trích dẫn câu trong bài kèm nghĩa tiếng Việt trong ngoặc `( )`.
-6. ĐỀ THI JLPT (QUY TẮC CỰC KỲ NGHIÊM NGẶT VỀ NGÔN NGỮ):
-   - CÂU HỎI VÀ TẤT CẢ PHƯƠNG ÁN LỰA CHỌN PHẢI LÀ 100% TIẾNG NHẬT NGUYÊN BẢN.
-   - "question_text" BẮT BUỘC 100% viết bằng tiếng Nhật tự nhiên chuẩn đề thi JLPT thật.
-   - TOÀN BỘ 4 lựa chọn trong "options" (A, B, C, D) BẮT BUỘC 100% LÀ TIẾNG NHẬT HOÀN TOÀN. 
-   - CẤM TUYỆT ĐỐI không được lẫn dù chỉ một từ tiếng Việt nào trong "options" A, B, C, D (không viết tiếng Việt, không kèm mở ngoặc dịch nghĩa, không giải thích ngữ pháp bằng tiếng Việt). Toàn bộ nội dung lựa chọn phải viết bằng tiếng Nhật như trong đề thi chính thức của Nhật Bản.
-   - Tiếng Việt CHỈ ĐƯỢC PHÉP xuất hiện duy nhất ở: "question_vietnamese" (dịch câu hỏi) và "option_analysis" (phân tích đúng sai của từng phương án).
+6. ĐỀ THI JLPT (CỰC KỲ QUAN TRỌNG):
+   - TOÀN BỘ "question_text" và 4 lựa chọn trong "options" (A, B, C, D) PHẢI LÀ 100% TIẾNG NHẬT NGUYÊN BẢN (KHÔNG ĐƯỢC CHỨA BẤT KỲ TỪ TIẾNG VIỆT NÀO).
+   - "question_vietnamese": Dịch nghĩa câu hỏi sang tiếng Việt.
+   - "correct_explanation": Dịch nghĩa và giải thích lý do tại sao câu trả lời đúng được chọn (bằng tiếng Việt). TUYỆT ĐỐI KHÔNG giải thích hay dịch 3 đáp án sai.
 
 JSON Schema bắt buộc:
 {{
@@ -484,7 +482,7 @@ JSON Schema bắt buộc:
       "question_number": 1,
       "category": "Ngữ pháp",
       "question_text": "文章中の「〜」の文法的説明として、最も適切なものはどれか。",
-      "question_vietnamese": "Dịch nghĩa câu hỏi tiếng Việt",
+      "question_vietnamese": "Dịch nghĩa câu hỏi bằng tiếng Việt",
       "options": {{
         "A": "「〜」の意味で、原因を表す表現。",
         "B": "「〜」の意味で、逆接を表す表現。",
@@ -492,12 +490,7 @@ JSON Schema bắt buộc:
         "D": "「〜」の意味で、状態の否定を表す表現。"
       }},
       "correct_answer": "A",
-      "option_analysis": {{
-        "A": "Giải thích vì sao A đúng (tiếng Việt)",
-        "B": "Giải thích vì sao B sai (tiếng Việt)",
-        "C": "Giải thích vì sao C sai (tiếng Việt)",
-        "D": "Giải thích vì sao D sai (tiếng Việt)"
-      }}
+      "correct_explanation": "Dịch nghĩa và giải thích ngắn gọn bằng tiếng Việt vì sao đáp án này đúng."
     }}
   ]
 }}
@@ -840,45 +833,21 @@ if st.session_state.analysis_data and isinstance(
                 )
 
                 correct_ans = q.get("correct_answer", "A")
-                opt_analysis = (
-                    q.get("option_analysis", {})
-                    if isinstance(q.get("option_analysis"), dict)
-                    else {}
-                )
 
-                # Chỉ khi người dùng chọn đáp án mới hiển thị bản dịch câu hỏi và giải thích
+                # Chỉ khi người dùng chọn đáp án mới hiển thị bản dịch câu hỏi và giải thích câu đúng
                 if user_choice is not None:
                     st.caption(f"*(Dịch nghĩa câu hỏi: {q.get('question_vietnamese', '')})*")
 
                     if user_choice == correct_ans:
-                        st.success(
-                            "🎉 **Chính xác!** Đáp án đúng là"
-                            f" **{correct_ans}**."
-                        )
+                        st.success(f"🎉 **Chính xác!** Đáp án đúng là **{correct_ans}**.")
                     else:
-                        st.error(
-                            f"❌ **Chưa chính xác!** Bạn chọn **{user_choice}**,"
-                            f" đáp án chuẩn là **{correct_ans}**."
-                        )
+                        st.error(f"❌ **Chưa chính xác!** Bạn chọn **{user_choice}**, đáp án chuẩn là **{correct_ans}**.")
 
-                    st.markdown(
-                        "**🔍 Phân tích chi tiết từng phương án & bẫy tư"
-                        " duy:**"
-                    )
-                    for opt_k in choice_keys:
-                        explanation_text = opt_analysis.get(
-                            opt_k, "Chưa có phân tích."
-                        )
-                        if opt_k == correct_ans:
-                            st.markdown(
-                                f"- ✅ **Phương án {opt_k} (ĐÚNG):**"
-                                f" {explanation_text}"
-                            )
-                        else:
-                            st.markdown(
-                                f"- ❌ **Phương án {opt_k} (SAI):**"
-                                f" {explanation_text}"
-                            )
+                    correct_opt_text = opts.get(correct_ans, "")
+                    explanation = q.get("correct_explanation") or q.get("option_analysis", {}).get(correct_ans, "Đáp án chuẩn xác.")
+                    
+                    st.markdown("**🔍 Dịch nghĩa & Giải thích đáp án đúng:**")
+                    st.info(f"✅ **Đáp án {correct_ans}:** {correct_opt_text}\n\n👉 **Ý nghĩa & Giải thích:** {explanation}")
                 st.markdown("---")
 
 # ==============================================================================
