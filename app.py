@@ -446,7 +446,10 @@ CÁC NGUYÊN TẮC QUAN TRỌNG:
    - Trích xuất từ 10 đến 20 Chữ Hán (Kanji) tiêu biểu nhất xuất hiện trong bài đọc kèm Âm Hán Việt, On/Kun và ý nghĩa.
    - Nếu bài đọc quá ngắn hoặc có ít chữ Hán, không bắt buộc đạt mốc 10 chữ mà hãy trích xuất mở rộng tối đa tất cả các chữ Hán có giá trị học tập trong bài.
 5. NGỮ PHÁP: Trích xuất 3 đến 6 mẫu ngữ pháp trọng tâm, trích dẫn câu trong bài kèm nghĩa tiếng Việt trong ngoặc `( )`.
-6. ĐỀ THI JLPT: 4 phương án A, B, C, D rõ ràng, có phân tích cụ thể tại sao đúng và tại sao 3 đáp án còn lại sai.
+6. ĐỀ THI JLPT (QUY TẮC BẮT BUỘC):
+   - Trường "question_text" và TOÀN BỘ 4 lựa chọn trong "options" (A, B, C, D) BẮT BUỘC 100% bằng TIẾNG NHẬT THUẦN TÚY như đề thi JLPT thật.
+   - TUYỆT ĐỐI KHÔNG chứa tiếng Việt, KHÔNG dịch nghĩa tiếng Việt trong ngoặc ở các phương án A, B, C, D.
+   - Tiếng Việt CHỈ ĐƯỢC PHÉP xuất hiện ở: "question_vietnamese" (dịch câu hỏi) và "option_analysis" (phân tích đáp án).
 
 JSON Schema bắt buộc:
 {{
@@ -469,7 +472,7 @@ JSON Schema bắt buộc:
     }}
   ],
   "vocabulary_list": [
-    {{ "word": "từ vựng", "reading": "cách đọc", "part_of_speech": "từ loại", "jlpt_level": "N2", "vietnamese_meaning": "nghĩa" }}
+    {{ "word": "từ vựng", "reading": "cách đọc", "jlpt_level": "N2", "vietnamese_meaning": "nghĩa", "part_of_speech": "từ loại" }}
   ],
   "kanji_list": [
     {{ "kanji": "hán tự", "han_viet": "ÂM HÁN", "jlpt_level": "N2", "onyomi": "On", "kunyomi": "Kun", "meaning": "nghĩa" }}
@@ -478,15 +481,20 @@ JSON Schema bắt buộc:
     {{
       "question_number": 1,
       "category": "Ý đồ tác giả",
-      "question_text": "câu hỏi tiếng Nhật",
-      "question_vietnamese": "dịch câu hỏi",
-      "options": {{ "A": "...", "B": "...", "C": "...", "D": "..." }},
+      "question_text": "この文章で筆者が最も言いたいことは何か。(100% tiếng Nhật)",
+      "question_vietnamese": "Dịch nghĩa câu hỏi tiếng Việt",
+      "options": {{
+        "A": "日本語の選択肢A (100% tiếng Nhật, không kèm tiếng Việt)",
+        "B": "日本語の選択肢B (100% tiếng Nhật, không kèm tiếng Việt)",
+        "C": "日本語の選択肢C (100% tiếng Nhật, không kèm tiếng Việt)",
+        "D": "日本語の選択肢D (100% tiếng Nhật, không kèm tiếng Việt)"
+      }},
       "correct_answer": "A",
       "option_analysis": {{
-        "A": "Giải thích A đúng",
-        "B": "Giải thích B sai",
-        "C": "Giải thích C sai",
-        "D": "Giải thích D sai"
+        "A": "Giải thích A đúng (tiếng Việt)",
+        "B": "Giải thích B sai (tiếng Việt)",
+        "C": "Giải thích C sai (tiếng Việt)",
+        "D": "Giải thích D sai (tiếng Việt)"
       }}
     }}
   ]
@@ -753,13 +761,14 @@ if st.session_state.analysis_data and isinstance(
             else []
         )
         if vocabs:
+            # Chuyển cột Ý nghĩa trong bài lên trước Từ loại
             vocab_rows = [
                 {
                     "Từ vựng / Cụm từ": v.get("word", ""),
                     "Cách đọc (Kana)": v.get("reading", ""),
                     "Cấp độ": v.get("jlpt_level", ""),
-                    "Từ loại": v.get("part_of_speech", ""),
                     "Ý nghĩa trong bài": v.get("vietnamese_meaning", ""),
+                    "Từ loại": v.get("part_of_speech", ""),
                 }
                 for v in vocabs
                 if isinstance(v, dict)
@@ -812,7 +821,6 @@ if st.session_state.analysis_data and isinstance(
                 st.markdown(
                     f"#### Câu {q_num}: {q.get('question_text', '')}"
                 )
-                st.caption(f"*(Dịch nghĩa: {q.get('question_vietnamese', '')})*")
 
                 opts = (
                     q.get("options", {})
@@ -836,7 +844,10 @@ if st.session_state.analysis_data and isinstance(
                     else {}
                 )
 
+                # Chỉ khi người dùng chọn đáp án mới hiển thị bản dịch câu hỏi và giải thích
                 if user_choice is not None:
+                    st.caption(f"*(Dịch nghĩa câu hỏi: {q.get('question_vietnamese', '')})*")
+
                     if user_choice == correct_ans:
                         st.success(
                             "🎉 **Chính xác!** Đáp án đúng là"
