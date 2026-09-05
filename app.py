@@ -653,27 +653,42 @@ if st.session_state.analysis_data and isinstance(
         f"❓ Đề thi JLPT ({len(questions)} câu)",
     ])
 
-    with tab_read:
-        ctrl_col1, ctrl_col2 = st.columns([1.2, 3.8])
-        with ctrl_col1:
-            show_furigana = st.toggle("🌸 Bật Furigana", value=False)
-        with ctrl_col2:
-            docx_file = generate_docx_file(data)
-            topic_slug = re.sub(
-                r"[^\w\s-]", "", summary_data.get("topic", "BaiDoc")
-            ).strip()
-            topic_slug = re.sub(r"[-\s]+", "_", topic_slug)
-            st.download_button(
-                label="📥 Tải bài đọc & bản dịch (.docx / Word)",
-                data=docx_file,
-                file_name=f"JLPT_Reading_{topic_slug}.docx",
-                mime=(
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                ),
-                type="secondary",
-            )
+# KHỐI HIỂN THỊ AUDIO ĐÃ SỬA LỖI TRẮNG TRANG
+        if st.session_state.raw_audio_b64:
+            audio_html = f"""
+            <div class="sticky-audio-bar">
+                <span style="font-size: 0.88rem; font-weight: 700; color: #d81b60; white-space: nowrap;">🎙️ Giọng Tokyo:</span>
+                
+                <!-- Nút tua lùi 10s -->
+                <button type="button" 
+                        onclick="var a=document.getElementById('nhk_audio'); if(a){{ a.currentTime=Math.max(0, a.currentTime-10); }}"
+                        style="background:#ffffff; border:1px solid #ffccd5; border-radius:8px; padding:4px 8px; font-size:0.8rem; font-weight:700; color:#d81b60; cursor:pointer;">
+                    ↺ 10s
+                </button>
 
-        st.markdown("---")
+                <!-- Trình phát Audio chuẩn của trình duyệt -->
+                <audio id="nhk_audio" controls style="height:36px; max-width:320px; flex-grow:1;">
+                    <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
+                </audio>
+
+                <!-- Nút tua tới 10s -->
+                <button type="button" 
+                        onclick="var a=document.getElementById('nhk_audio'); if(a){{ a.currentTime=Math.min(a.duration||0, a.currentTime+10); }}"
+                        style="background:#ffffff; border:1px solid #ffccd5; border-radius:8px; padding:4px 8px; font-size:0.8rem; font-weight:700; color:#d81b60; cursor:pointer;">
+                    10s ↻
+                </button>
+
+                <!-- Chọn tốc độ đọc -->
+                <select onchange="var a=document.getElementById('nhk_audio'); if(a){{ a.playbackRate=this.value; }}"
+                        style="padding:4px 6px; border-radius:8px; border:1px solid #ffccd5; background:#ffffff; font-weight:600; font-size:0.8rem; color:#d81b60; cursor:pointer;">
+                    <option value="0.75">x0.75</option>
+                    <option value="1.0" selected>x1.0</option>
+                    <option value="1.25">x1.25</option>
+                    <option value="1.5">x1.5</option>
+                </select>
+            </div>
+            """
+            st.markdown(audio_html, unsafe_allow_html=True)
 
         paragraphs = (
             data.get("paragraphs", [])
