@@ -167,7 +167,7 @@ st.markdown(
         flex-wrap: wrap;
         align-items: center;
         justify-content: center;
-        gap: 10px;
+        gap: 12px;
         backdrop-filter: blur(10px);
     }
     @media (prefers-color-scheme: dark) {
@@ -190,6 +190,7 @@ st.markdown(
     .badge-vocab { background-color: #f3e5f5; color: #7b1fa2; }
     .badge-grammar { background-color: #e8f5e9; color: #2e7d32; }
 
+    /* Nút tuyển dụng mở Tab mới */
     .recruitment-link-card {
         display: flex;
         align-items: center;
@@ -559,12 +560,11 @@ def generate_nhk_voice_sync(text):
 def fetch_gemini_analysis(text: str, key: str):
     p_type, _, n_int, n_voc, n_gra, tot_q = determine_question_rules(text)
     genai.configure(api_key=key)
-    # Giữ nguyên bản chuẩn gốc 100%
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-3.6-flash",
         generation_config={
             "response_mime_type": "application/json",
-            "temperature": 0.3,
+            "temperature": 0.25, # Giảm nhiệt độ để phản hồi nhanh và chuẩn xác hơn
         },
     )
     prompt = build_system_prompt(p_type, n_int, n_voc, n_gra, tot_q)
@@ -588,6 +588,7 @@ if analyze_btn:
     else:
         p_type, char_len, _, _, _, tot_q = determine_question_rules(user_text)
 
+        # Cập nhật thông báo: "Đang phân tích bài văn"
         with st.spinner("⚡ Đang phân tích bài văn..."):
             try:
                 # Gọi đồng thời cả AI và tạo Giọng đọc trên 2 luồng riêng biệt
@@ -656,6 +657,7 @@ if st.session_state.analysis_data and isinstance(
     with tab_read:
         ctrl_col1, ctrl_col2 = st.columns([1.2, 3.8])
         with ctrl_col1:
+            # Mặc định tắt Furigana, người dùng cần sẽ bật lên sau
             show_furigana = st.toggle("🌸 Bật Furigana", value=False)
         with ctrl_col2:
             docx_file = generate_docx_file(data)
@@ -702,40 +704,40 @@ if st.session_state.analysis_data and isinstance(
                     unsafe_allow_html=True,
                 )
 
-        # KHỐI HIỂN THỊ AUDIO ĐÃ SỬA TRIỆT ĐỂ LỖI TRẮNG TRANG & CÚ PHÁP
         if st.session_state.raw_audio_b64:
-            audio_html = f"""
+            st.markdown(
+                f"""
             <div class="sticky-audio-bar">
-                <span style="font-size: 0.88rem; font-weight: 700; color: #d81b60; white-space: nowrap;">🎙️ Tokyo NHK:</span>
-                
-                <button type="button" 
-                        onclick="var a=document.getElementById('nhk_audio'); if(a){{ a.currentTime=Math.max(0, a.currentTime-10); }}"
-                        title="Tua lùi 10 giây"
-                        style="background:#ffffff; border:1px solid #ffccd5; border-radius:8px; padding:4px 9px; font-size:0.82rem; font-weight:700; color:#d81b60; cursor:pointer;">
-                    ↺ 10s
-                </button>
-
-                <audio id="nhk_audio" controls style="height:36px; max-width:320px; flex-grow:1;">
+                <span style="font-size: 0.9rem; font-weight: 700; color: #d81b60;">🎙️ Giọng đọc chuẩn Tokyo (NHK):</span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <button onclick="let p = document.getElementById('floating_player'); if(p) p.currentTime = Math.max(0, p.currentTime - 10);" 
+                            style="padding: 4px 10px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 700; font-size: 0.82rem; cursor: pointer; color: #d81b60;">
+                        ⏮️ -10s
+                    </button>
+                    <button onclick="let p = document.getElementById('floating_player'); if(p) p.currentTime = Math.min(p.duration || 0, p.currentTime + 10);" 
+                            style="padding: 4px 10px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 700; font-size: 0.82rem; cursor: pointer; color: #d81b60;">
+                        +10s ⏭️
+                    </button>
+                </div>
+                <audio id="floating_player" controls style="height: 38px; max-width: 360px; flex-grow: 1;">
                     <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
                 </audio>
-
-                <button type="button" 
-                        onclick="var a=document.getElementById('nhk_audio'); if(a){{ a.currentTime=Math.min(a.duration||0, a.currentTime+10); }}"
-                        title="Tua tới 10 giây"
-                        style="background:#ffffff; border:1px solid #ffccd5; border-radius:8px; padding:4px 9px; font-size:0.82rem; font-weight:700; color:#d81b60; cursor:pointer;">
-                    10s ↻
-                </button>
-
-                <select onchange="var a=document.getElementById('nhk_audio'); if(a){{ a.playbackRate=this.value; }}"
-                        style="padding:4px 6px; border-radius:8px; border:1px solid #ffccd5; background:#ffffff; font-weight:600; font-size:0.8rem; color:#d81b60; cursor:pointer;">
-                    <option value="0.75">x0.75</option>
-                    <option value="1.0" selected>x1.0</option>
-                    <option value="1.25">x1.25</option>
-                    <option value="1.5">x1.5</option>
-                </select>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.82rem; font-weight: 600;">⚡ Tốc độ:</span>
+                    <select id="speed_select" onchange="document.getElementById('floating_player').playbackRate = this.value;" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600; cursor: pointer;">
+                        <option value="0.5">x0.5 (Rất chậm)</option>
+                        <option value="0.75">x0.75 (Chậm)</option>
+                        <option value="1.0" selected>x1.0 (Chuẩn)</option>
+                        <option value="1.25">x1.25 (Nhanh vừa)</option>
+                        <option value="1.5">x1.5 (Nhanh)</option>
+                        <option value="1.75">x1.75 (Rất nhanh)</option>
+                        <option value="2.0">x2.0 (Cực nhanh)</option>
+                    </select>
+                </div>
             </div>
-            """
-            st.markdown(audio_html, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
 
     with tab_grammar:
         grammars = (
@@ -766,6 +768,7 @@ if st.session_state.analysis_data and isinstance(
             else []
         )
         if vocabs:
+            # Chuyển Cấp độ và Từ loại ra phía sau cột Ý nghĩa trong bài
             vocab_rows = [
                 {
                     "Từ vựng / Cụm từ": v.get("word", ""),
@@ -788,6 +791,7 @@ if st.session_state.analysis_data and isinstance(
             else []
         )
         if kanjis:
+            # Chuyển Cấp độ, Âm On, Âm Kun ra phía sau cột Ý nghĩa
             kanji_rows = [
                 {
                     "Hán tự": k.get("kanji", ""),
