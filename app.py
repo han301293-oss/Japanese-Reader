@@ -564,7 +564,7 @@ def fetch_gemini_analysis(text: str, key: str):
         model_name="gemini-3.6-flash",
         generation_config={
             "response_mime_type": "application/json",
-            "temperature": 0.25,
+            "temperature": 0.25, # Giảm nhiệt độ để phản hồi nhanh và chuẩn xác hơn
         },
     )
     prompt = build_system_prompt(p_type, n_int, n_voc, n_gra, tot_q)
@@ -588,7 +588,7 @@ if analyze_btn:
     else:
         p_type, char_len, _, _, _, tot_q = determine_question_rules(user_text)
 
-        # Cập nhật thông báo: "Đang phân tích bài văn"
+        # Cập nhật thông báo theo đúng yêu cầu: "Đang phân tích bài văn"
         with st.spinner("⚡ Đang phân tích bài văn..."):
             try:
                 # Gọi đồng thời cả AI và tạo Giọng đọc trên 2 luồng riêng biệt
@@ -709,24 +709,12 @@ if st.session_state.analysis_data and isinstance(
                 f"""
             <div class="sticky-audio-bar">
                 <span style="font-size: 0.9rem; font-weight: 700; color: #d81b60;">🎙️ Giọng đọc chuẩn Tokyo (NHK):</span>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <button type="button" 
-                            onclick="var p = document.getElementById('floating_player'); if(p){{ p.currentTime = Math.max(0, (p.currentTime || 0) - 10); }}" 
-                            style="padding: 4px 10px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 700; font-size: 0.82rem; cursor: pointer; color: #d81b60;">
-                        ⏮️ -10s
-                    </button>
-                    <button type="button" 
-                            onclick="var p = document.getElementById('floating_player'); if(p){{ var dur = isNaN(p.duration) ? Infinity : p.duration; p.currentTime = Math.min(dur, (p.currentTime || 0) + 10); }}" 
-                            style="padding: 4px 10px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 700; font-size: 0.82rem; cursor: pointer; color: #d81b60;">
-                        +10s ⏭️
-                    </button>
-                </div>
-                <audio id="floating_player" controls preload="auto" style="height: 38px; max-width: 360px; flex-grow: 1;">
+                <audio id="floating_player" controls style="height: 38px; max-width: 400px; flex-grow: 1;">
                     <source src="data:audio/mp3;base64,{st.session_state.raw_audio_b64}" type="audio/mp3">
                 </audio>
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="font-size: 0.82rem; font-weight: 600;">⚡ Tốc độ:</span>
-                    <select id="speed_select" onchange="var p = document.getElementById('floating_player'); if(p) p.playbackRate = parseFloat(this.value);" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600; cursor: pointer;">
+                    <select id="speed_select" onchange="document.getElementById('floating_player').playbackRate = this.value;" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #ffccd5; background: white; font-weight: 600; cursor: pointer;">
                         <option value="0.5">x0.5 (Rất chậm)</option>
                         <option value="0.75">x0.75 (Chậm)</option>
                         <option value="1.0" selected>x1.0 (Chuẩn)</option>
