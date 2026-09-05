@@ -559,11 +559,12 @@ def generate_nhk_voice_sync(text):
 def fetch_gemini_analysis(text: str, key: str):
     p_type, _, n_int, n_voc, n_gra, tot_q = determine_question_rules(text)
     genai.configure(api_key=key)
+    # Giữ nguyên bản chuẩn gốc 100%
     model = genai.GenerativeModel(
-        model_name="gemini-3.6-flash",
+        model_name="gemini-1.5-flash",
         generation_config={
             "response_mime_type": "application/json",
-            "temperature": 0.25,
+            "temperature": 0.3,
         },
     )
     prompt = build_system_prompt(p_type, n_int, n_voc, n_gra, tot_q)
