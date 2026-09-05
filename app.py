@@ -588,7 +588,8 @@ if analyze_btn:
     else:
         p_type, char_len, _, _, _, tot_q = determine_question_rules(user_text)
 
-        with st.spinner(f"⚡ Đang tăng tốc phân tích {p_type} ({char_len} ký tự) & tạo {tot_q} câu hỏi JLPT..."):
+        # Cập nhật thông báo theo đúng yêu cầu: "Đang phân tích bài văn"
+        with st.spinner("⚡ Đang phân tích bài văn..."):
             try:
                 # Gọi đồng thời cả AI và tạo Giọng đọc trên 2 luồng riêng biệt
                 with ThreadPoolExecutor(max_workers=2) as executor:
@@ -656,7 +657,8 @@ if st.session_state.analysis_data and isinstance(
     with tab_read:
         ctrl_col1, ctrl_col2 = st.columns([1.2, 3.8])
         with ctrl_col1:
-            show_furigana = st.toggle("🌸 Bật Furigana", value=True)
+            # Mặc định tắt Furigana, người dùng cần sẽ bật lên sau
+            show_furigana = st.toggle("🌸 Bật Furigana", value=False)
         with ctrl_col2:
             docx_file = generate_docx_file(data)
             topic_slug = re.sub(
@@ -756,13 +758,13 @@ if st.session_state.analysis_data and isinstance(
             else []
         )
         if vocabs:
-            # Chuyển cột Ý nghĩa trong bài lên trước Từ loại
+            # Chuyển Cấp độ và Từ loại ra phía sau cột Ý nghĩa trong bài
             vocab_rows = [
                 {
                     "Từ vựng / Cụm từ": v.get("word", ""),
                     "Cách đọc (Kana)": v.get("reading", ""),
-                    "Cấp độ": v.get("jlpt_level", ""),
                     "Ý nghĩa trong bài": v.get("vietnamese_meaning", ""),
+                    "Cấp độ": v.get("jlpt_level", ""),
                     "Từ loại": v.get("part_of_speech", ""),
                 }
                 for v in vocabs
@@ -779,14 +781,15 @@ if st.session_state.analysis_data and isinstance(
             else []
         )
         if kanjis:
+            # Chuyển Cấp độ, Âm On, Âm Kun ra phía sau cột Ý nghĩa
             kanji_rows = [
                 {
                     "Hán tự": k.get("kanji", ""),
                     "Âm Hán Việt": k.get("han_viet", ""),
+                    "Ý nghĩa": k.get("meaning", ""),
                     "Cấp độ": k.get("jlpt_level", ""),
                     "Âm On": k.get("onyomi", ""),
                     "Âm Kun": k.get("kunyomi", ""),
-                    "Ý nghĩa": k.get("meaning", ""),
                 }
                 for k in kanjis
                 if isinstance(k, dict)
@@ -839,9 +842,15 @@ if st.session_state.analysis_data and isinstance(
                     st.caption(f"*(Dịch nghĩa câu hỏi: {q.get('question_vietnamese', '')})*")
 
                     if user_choice == correct_ans:
-                        st.success(f"🎉 **Chính xác!** Đáp án đúng là **{correct_ans}**.")
+                        st.success(
+                            "🎉 **Chính xác!** Đáp án đúng là"
+                            f" **{correct_ans}**."
+                        )
                     else:
-                        st.error(f"❌ **Chưa chính xác!** Bạn chọn **{user_choice}**, đáp án chuẩn là **{correct_ans}**.")
+                        st.error(
+                            f"❌ **Chưa chính xác!** Bạn chọn **{user_choice}**,"
+                            f" đáp án chuẩn là **{correct_ans}**."
+                        )
 
                     correct_opt_text = opts.get(correct_ans, "")
                     explanation = q.get("correct_explanation") or q.get("option_analysis", {}).get(correct_ans, "Đáp án chuẩn xác.")
